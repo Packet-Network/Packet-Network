@@ -431,15 +431,39 @@
       .toolbar {
         width: 100%;
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         padding: 8px;
         border-right: none;
         border-bottom: 2px solid #0f3460;
         justify-content: flex-start;
         gap: 6px;
-        max-height: 140px;
+        max-height: none;
         overflow-x: auto;
         overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        /* Scroll hint gradient */
+        background: linear-gradient(90deg, 
+          #16213e 0%, #16213e 85%, 
+          rgba(22, 33, 62, 0.5) 95%, 
+          rgba(22, 33, 62, 0) 100%
+        );
+        background-attachment: local, scroll;
+      }
+      .toolbar::after {
+        content: '→';
+        position: sticky;
+        right: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        color: #00d9ff;
+        font-size: 1.2em;
+        background: linear-gradient(90deg, transparent, #16213e 30%);
+        animation: scrollHint 1.5s ease-in-out infinite;
+      }
+      @keyframes scrollHint {
+        0%, 100% { opacity: 0.5; transform: translateX(0); }
+        50% { opacity: 1; transform: translateX(5px); }
       }
       .toolbar-section {
         display: none;
@@ -552,7 +576,7 @@
         right: 8px;
       }
       .toolbar {
-        max-height: 100px;
+        max-height: none;
       }
       .device-btn {
         min-width: 50px;

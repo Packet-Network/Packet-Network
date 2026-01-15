@@ -1896,7 +1896,8 @@ function checkRequirement(req) {
     case 'internet':
       return internet && isConnectedToInternet();
     case 'minPCs':
-      return pcs.length >= req.value && pcs.every(pc => isDeviceConnectedOrWifi(pc.id));
+      const connectedPCs = pcs.filter(pc => isDeviceConnectedOrWifi(pc.id));
+      return connectedPCs.length >= req.value;
     case 'minSpeed':
       return getMinSpeed() >= req.value;
     case 'redundancy':
@@ -1929,8 +1930,11 @@ function isConnectedToInternet() {
   const internet = state.devices.find(d => d.type === 'internet');
   if (!internet) return false;
   
-  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server');
-  return pcs.length > 0 && pcs.every(pc => canReach(internet.id, pc.id));
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server' || d.type === 'laptop');
+  if (pcs.length === 0) return false;
+  
+  // At least one PC must be connected
+  return pcs.some(pc => canReach(internet.id, pc.id));
 }
 
 function isDeviceConnected(deviceId) {
@@ -1948,6 +1952,9 @@ function canReach(fromId, toId) {
     const current = queue.shift();
     if (current === toId) return true;
     
+    const currentDevice = state.devices.find(d => d.id === current);
+    
+    // Wired connections
     state.links.forEach(link => {
       let neighbor = null;
       if (link.from === current) neighbor = link.to;
@@ -1957,8 +1964,36 @@ function canReach(fromId, toId) {
         queue.push(neighbor);
       }
     });
+    
+    // WiFi connections: if current is a WiFi AP, add all devices in range
+    if (currentDevice && currentDevice.type === 'wifiap' && !checkWifiInterference(currentDevice)) {
+      state.devices.forEach(d => {
+        if (!visited.has(d.id) && isWifiCapable(d.type) && isInWifiRange(d, currentDevice)) {
+          visited.add(d.id);
+          queue.push(d.id);
+        }
+      });
+    }
+    
+    // If current device is WiFi-capable, check if it's in range of any connected AP
+    if (currentDevice && isWifiCapable(currentDevice.type)) {
+      state.devices.forEach(ap => {
+        if (ap.type === 'wifiap' && !visited.has(ap.id) && 
+            isInWifiRange(currentDevice, ap) && !checkWifiInterference(ap)) {
+          // Only add AP if it has a wired connection (we'll explore from there)
+          if (state.links.some(l => l.from === ap.id || l.to === ap.id)) {
+            visited.add(ap.id);
+            queue.push(ap.id);
+          }
+        }
+      });
+    }
   }
   return false;
+}
+
+function isWifiCapable(deviceType) {
+  return ['pc', 'laptop', 'server'].includes(deviceType);
 }
 
 function getMinSpeed() {
