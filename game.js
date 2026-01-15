@@ -1228,6 +1228,47 @@ function getTooltipContent(device) {
   content += `種類: ${getTypeName(device.type)}<br>`;
   content += `ポート: ${ports}/${maxPorts}<br>`;
   
+  // WiFi AP status
+  if (device.type === 'wifiap') {
+    const interference = checkWifiInterference(device);
+    const connected = isDeviceConnected(device.id);
+    content += interference 
+      ? `<span style="color:#ff6b6b">⚠️ 電子レンジ干渉中</span><br>`
+      : `<span style="color:#4ecdc4">📶 WiFi正常</span><br>`;
+    content += connected
+      ? `<span style="color:#4ecdc4">🌐 インターネット接続済</span>`
+      : `<span style="color:#ff6b6b">❌ インターネット未接続</span>`;
+  }
+  
+  // WiFi-capable device status
+  if (device.type === 'laptop' || device.type === 'pc') {
+    const wiredConnection = state.links.some(l => l.from === device.id || l.to === device.id);
+    if (!wiredConnection) {
+      // Check WiFi connection
+      const aps = state.devices.filter(d => d.type === 'wifiap');
+      let wifiStatus = null;
+      for (const ap of aps) {
+        if (isInWifiRange(device, ap)) {
+          if (checkWifiInterference(ap)) {
+            wifiStatus = { connected: false, reason: '干渉' };
+          } else if (!isDeviceConnected(ap.id)) {
+            wifiStatus = { connected: false, reason: 'APが未接続' };
+          } else {
+            wifiStatus = { connected: true };
+          }
+          break;
+        }
+      }
+      if (wifiStatus) {
+        content += wifiStatus.connected
+          ? `<span style="color:#4ecdc4">📶 WiFi接続中</span>`
+          : `<span style="color:#ff6b6b">📶 WiFi: ${wifiStatus.reason}</span>`;
+      } else {
+        content += `<span style="color:#888">📶 WiFi範囲外</span>`;
+      }
+    }
+  }
+  
   // Real terminology hint
   if (device.type === 'switch8' || device.type === 'switch24') {
     content += `<span style="color:#888;font-size:0.85em">💡 L2スイッチ (レイヤー2)</span>`;
@@ -1239,8 +1280,18 @@ function getTooltipContent(device) {
 }
 
 function getTypeName(type) {
-  const names = { pc: 'PC', switch8: 'L2スイッチ(8p)', switch24: 'L2スイッチ(24p)', router: 'ルーター' };
-  return names[type];
+  const names = { 
+    pc: 'PC', 
+    laptop: 'ノートPC',
+    server: 'サーバー',
+    switch8: 'L2スイッチ(8p)', 
+    switch24: 'L2スイッチ(24p)', 
+    switch48: 'L2スイッチ(48p)',
+    router: 'ルーター',
+    wifiap: 'WiFi AP',
+    internet: 'インターネット'
+  };
+  return names[type] || type;
 }
 
 // Device/Link management
@@ -1787,7 +1838,9 @@ function startStage(stageIndex) {
       x: d.x,
       y: d.y,
       label: d.label,
-      fixed: d.fixed || false
+      fixed: d.fixed || false,
+      width: d.width,   // For walls
+      height: d.height  // For walls
     });
   });
   
