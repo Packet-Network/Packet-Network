@@ -154,6 +154,25 @@
       padding: 10px 30px;
       font-size: 1em;
     }
+    .share-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .twitter-btn {
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .twitter-btn:hover { background: #0c85d0; }
   </style>
 </head>
 <body>
@@ -280,7 +299,13 @@
     <div class="modal-content">
       <h2 id="resultTitle">評価結果</h2>
       <div class="score-detail" id="scoreDetail"></div>
-      <button class="check-btn" onclick="closeModal()">閉じる</button>
+      <div class="share-buttons">
+        <button class="twitter-btn" id="tweetBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          結果をツイート
+        </button>
+        <button class="check-btn" onclick="closeModal()">閉じる</button>
+      </div>
     </div>
   </div>
 

@@ -588,6 +588,18 @@ function evaluate() {
   else if (total >= 70) grade = 'B';
   else if (total >= 60) grade = 'C';
   
+  // Store result for sharing
+  lastEvalResult = {
+    grade,
+    total,
+    connectivity,
+    efficiency,
+    scalability,
+    redundancy,
+    deviceCount: state.devices.length,
+    cost: calculateCost()
+  };
+  
   // Show result
   const resultTitle = document.getElementById('resultTitle');
   const scoreDetail = document.getElementById('scoreDetail');
@@ -659,6 +671,39 @@ function getAdvice(conn, eff, scale, redun) {
 function closeModal() {
   document.getElementById('resultModal').classList.remove('show');
 }
+
+// Twitter share
+let lastEvalResult = null;
+
+document.getElementById('tweetBtn').addEventListener('click', () => {
+  if (!lastEvalResult) return;
+  
+  const { grade, total, connectivity, efficiency, scalability, redundancy, deviceCount, cost } = lastEvalResult;
+  
+  const gradeEmoji = {
+    'S': '🏆',
+    'A': '🥇', 
+    'B': '🥈',
+    'C': '🥉',
+    'D': '📝'
+  };
+  
+  const text = `${gradeEmoji[grade] || '🌐'} Packet Networkで設計評価 ${grade}ランク (${total}点) を獲得！
+
+📊 接続性: ${connectivity}/100
+⚡ 効率性: ${efficiency}/100
+📈 拡張性: ${scalability}/100
+🛡️ 冗長性: ${redundancy}/100
+
+🖥️ 機器数: ${deviceCount} | 💰 コスト: ¥${cost.toLocaleString()}
+
+#PacketNetwork #ネットワーク設計`;
+  
+  const url = 'https://packetnetwork.exe.xyz:8000/';
+  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  
+  window.open(tweetUrl, '_blank', 'width=550,height=420');
+});
 
 // Initial UI update
 updateUI();
