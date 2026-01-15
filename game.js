@@ -8,10 +8,14 @@ const state = {
   devices: [],
   links: [],
   selectedTool: 'select',
-  selectedDevice: null,
+  selectedDevices: [], // Multiple selection support
   dragging: null,
+  dragOffset: null,
   cableStart: null,
-  nextId: 1
+  nextId: 1,
+  // Selection box
+  selectionBox: null,
+  selectionStart: null
 };
 
 // Device costs (realistic prices in JPY)
@@ -112,11 +116,24 @@ function draw() {
   state.devices.forEach(device => {
     drawDevice(device);
   });
+  
+  // Draw selection box
+  if (state.selectionBox) {
+    ctx.strokeStyle = '#00d9ff';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 3]);
+    ctx.fillStyle = 'rgba(0, 217, 255, 0.1)';
+    ctx.beginPath();
+    ctx.rect(state.selectionBox.x, state.selectionBox.y, state.selectionBox.w, state.selectionBox.h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 function drawDevice(device) {
   const size = device.type === 'pc' ? 30 : 40;
-  const isSelected = state.selectedDevice === device.id;
+  const isSelected = state.selectedDevices.includes(device.id);
   
   // Glow effect for selected
   if (isSelected) {
@@ -182,8 +199,36 @@ document.querySelectorAll('.tool-btn').forEach(btn => {
     btn.classList.add('selected');
     state.selectedTool = btn.dataset.tool;
     state.cableStart = null;
+    canvas.style.cursor = state.selectedTool === 'cable' ? 'crosshair' : 
+                          state.selectedTool === 'delete' ? 'not-allowed' : 'default';
     draw();
   });
+});
+
+// Drag & Drop from toolbar
+document.querySelectorAll('.device-btn').forEach(btn => {
+  btn.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('device-type', btn.dataset.device);
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+});
+
+canvas.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+});
+
+canvas.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const deviceType = e.dataTransfer.getData('device-type');
+  if (deviceType) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    addDevice(deviceType, x, y);
+    updateUI();
+    draw();
+  }
 });
 
 // Canvas interactions
@@ -194,27 +239,36 @@ canvas.addEventListener('mousedown', (e) => {
   
   const clickedDevice = findDeviceAt(x, y);
   
-  // Always allow dragging existing devices
-  if (clickedDevice && state.selectedTool === 'select') {
-    state.selectedDevice = clickedDevice.id;
-    state.dragging = clickedDevice.id;
-    state.dragOffset = { x: x - clickedDevice.x, y: y - clickedDevice.y };
-    updateUI();
-    draw();
-    return;
-  }
-  
   switch (state.selectedTool) {
     case 'select':
-      state.selectedDevice = null;
-      break;
-      
-    case 'pc':
-    case 'switch8':
-    case 'switch24':
-    case 'router':
-      if (!clickedDevice) {
-        addDevice(state.selectedTool, x, y);
+      if (clickedDevice) {
+        // Shift+click for multi-select
+        if (e.shiftKey) {
+          const idx = state.selectedDevices.indexOf(clickedDevice.id);
+          if (idx >= 0) {
+            state.selectedDevices.splice(idx, 1);
+          } else {
+            state.selectedDevices.push(clickedDevice.id);
+          }
+        } else {
+          // Check if clicking on already selected device (for group drag)
+          if (!state.selectedDevices.includes(clickedDevice.id)) {
+            state.selectedDevices = [clickedDevice.id];
+          }
+          state.dragging = true;
+          state.dragOffset = { x, y };
+          // Store original positions for all selected devices
+          state.dragStartPositions = {};
+          state.selectedDevices.forEach(id => {
+            const d = state.devices.find(dev => dev.id === id);
+            if (d) state.dragStartPositions[id] = { x: d.x, y: d.y };
+          });
+        }
+      } else {
+        // Start selection box
+        state.selectedDevices = [];
+        state.selectionStart = { x, y };
+        state.selectionBox = { x, y, w: 0, h: 0 };
       }
       break;
       
@@ -233,7 +287,13 @@ canvas.addEventListener('mousedown', (e) => {
       
     case 'delete':
       if (clickedDevice) {
-        deleteDevice(clickedDevice.id);
+        // Delete all selected if clicking on selected device
+        if (state.selectedDevices.includes(clickedDevice.id)) {
+          state.selectedDevices.forEach(id => deleteDevice(id));
+          state.selectedDevices = [];
+        } else {
+          deleteDevice(clickedDevice.id);
+        }
       }
       break;
   }
@@ -249,19 +309,36 @@ canvas.addEventListener('mousemove', (e) => {
   
   state.mousePos = { x, y };
   
-  if (state.dragging) {
-    const device = state.devices.find(d => d.id === state.dragging);
-    if (device) {
-      const offset = state.dragOffset || { x: 0, y: 0 };
-      device.x = x - offset.x;
-      device.y = y - offset.y;
-    }
+  // Dragging selected devices
+  if (state.dragging && state.selectedDevices.length > 0) {
+    const dx = x - state.dragOffset.x;
+    const dy = y - state.dragOffset.y;
+    state.selectedDevices.forEach(id => {
+      const device = state.devices.find(d => d.id === id);
+      const startPos = state.dragStartPositions[id];
+      if (device && startPos) {
+        device.x = startPos.x + dx;
+        device.y = startPos.y + dy;
+      }
+    });
+  }
+  
+  // Selection box
+  if (state.selectionStart) {
+    const sx = state.selectionStart.x;
+    const sy = state.selectionStart.y;
+    state.selectionBox = {
+      x: Math.min(sx, x),
+      y: Math.min(sy, y),
+      w: Math.abs(x - sx),
+      h: Math.abs(y - sy)
+    };
   }
   
   // Tooltip
   const hoverDevice = findDeviceAt(x, y);
   const tooltip = document.getElementById('tooltip');
-  if (hoverDevice && state.selectedTool === 'select') {
+  if (hoverDevice && state.selectedTool === 'select' && !state.dragging && !state.selectionStart) {
     tooltip.innerHTML = getTooltipContent(hoverDevice);
     tooltip.style.left = (e.clientX + 15) + 'px';
     tooltip.style.top = (e.clientY + 15) + 'px';
@@ -274,7 +351,22 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mouseup', () => {
-  state.dragging = null;
+  // Finish selection box
+  if (state.selectionBox && state.selectionBox.w > 5 && state.selectionBox.h > 5) {
+    const box = state.selectionBox;
+    state.selectedDevices = state.devices
+      .filter(d => {
+        return d.x >= box.x && d.x <= box.x + box.w &&
+               d.y >= box.y && d.y <= box.y + box.h;
+      })
+      .map(d => d.id);
+  }
+  
+  state.dragging = false;
+  state.selectionStart = null;
+  state.selectionBox = null;
+  state.dragStartPositions = null;
+  draw();
 });
 
 canvas.addEventListener('mouseleave', () => {
@@ -357,7 +449,8 @@ function addLink(fromId, toId) {
 function deleteDevice(id) {
   state.devices = state.devices.filter(d => d.id !== id);
   state.links = state.links.filter(l => l.from !== id && l.to !== id);
-  if (state.selectedDevice === id) state.selectedDevice = null;
+  const idx = state.selectedDevices.indexOf(id);
+  if (idx >= 0) state.selectedDevices.splice(idx, 1);
 }
 
 // UI Updates
