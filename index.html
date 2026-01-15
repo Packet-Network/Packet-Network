@@ -464,7 +464,7 @@
   
   <div class="main-container">
     <div class="toolbar">
-      <div class="toolbar-section">機器</div>
+      <div class="toolbar-section" data-i18n="devices">機器</div>
       
       <div class="device-btn" draggable="true" data-device="pc">
         <svg class="icon" viewBox="0 0 48 36">
@@ -528,7 +528,7 @@
         <div class="cost">¥350,000</div>
       </div>
       
-      <div class="toolbar-section">ツール</div>
+      <div class="toolbar-section" data-i18n="tools">ツール</div>
       
       <div class="tool-btn selected" data-tool="select">
         <div class="icon">⬜</div>
@@ -585,7 +585,7 @@
   <!-- Stage Select Modal -->
   <div class="modal show" id="stageSelectModal">
     <div class="modal-content" style="max-width:600px;">
-      <h2 style="color:#00d9ff;margin-bottom:20px;" data-i18n="stages">🎮 Select Stage</h2>
+      <h2 style="color:#00d9ff;margin-bottom:20px;">🎮 <span data-i18n="stages">ステージ</span></h2>
       <div class="stage-grid" id="stageGrid"></div>
     </div>
   </div>
@@ -613,9 +613,12 @@
       <div class="share-buttons">
         <button class="twitter-btn" id="tweetBtn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          ツイート
+          <span data-i18n="tweet">ツイート</span>
         </button>
-        <button class="check-btn" onclick="closeModal()">もう一度</button>
+        <button class="check-btn" id="nextStageBtn" style="display:none;background:#22c55e;" onclick="goNextStage()">
+          <span data-i18n="nextStage">次のステージ</span> →
+        </button>
+        <button class="check-btn" onclick="closeModal()"><span data-i18n="retry">もう一度</span></button>
       </div>
     </div>
   </div>

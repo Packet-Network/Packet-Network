@@ -4,7 +4,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // ========== LOCALIZATION ==========
-let currentLang = localStorage.getItem('pn_lang') || (navigator.language.startsWith('ja') ? 'ja' : 'en');
+let currentLang = localStorage.getItem('pn_lang') || 'ja'; // Default to Japanese
 
 const i18n = {
   ja: {
@@ -600,12 +600,26 @@ canvas.addEventListener('mousedown', (e) => {
       
     case 'delete':
       if (clickedDevice) {
+        // Don't delete fixed devices (like Internet)
+        if (clickedDevice.fixed) {
+          showHint(currentLang === 'ja' ? 'この機器は削除できません' : 'Cannot delete this device');
+          break;
+        }
         // Delete all selected if clicking on selected device
         if (state.selectedDevices.includes(clickedDevice.id)) {
-          state.selectedDevices.forEach(id => deleteDevice(id));
+          state.selectedDevices.forEach(id => {
+            const d = state.devices.find(dev => dev.id === id);
+            if (d && !d.fixed) deleteDevice(id);
+          });
           state.selectedDevices = [];
         } else {
           deleteDevice(clickedDevice.id);
+        }
+      } else {
+        // Check if clicking on a cable
+        const clickedLink = findLinkAt(x, y);
+        if (clickedLink) {
+          state.links = state.links.filter(l => l !== clickedLink);
         }
       }
       break;
@@ -634,6 +648,8 @@ canvas.addEventListener('mousemove', (e) => {
         device.y = startPos.y + dy;
       }
     });
+    // Recalculate cable lengths
+    recalculateCableLengths();
   }
   
   // Selection box
@@ -696,6 +712,44 @@ function findDeviceAt(x, y) {
     }
   }
   return null;
+}
+
+function findLinkAt(x, y) {
+  const threshold = 15;
+  for (const link of state.links) {
+    const from = state.devices.find(d => d.id === link.from);
+    const to = state.devices.find(d => d.id === link.to);
+    if (!from || !to) continue;
+    
+    // Distance from point to line segment
+    const dist = pointToLineDistance(x, y, from.x, from.y, to.x, to.y);
+    if (dist < threshold) {
+      return link;
+    }
+  }
+  return null;
+}
+
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+  
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  
+  if (lenSq !== 0) param = dot / lenSq;
+  
+  let xx, yy;
+  if (param < 0) { xx = x1; yy = y1; }
+  else if (param > 1) { xx = x2; yy = y2; }
+  else { xx = x1 + param * C; yy = y1 + param * D; }
+  
+  const dx = px - xx;
+  const dy = py - yy;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 function getTooltipContent(device) {
@@ -796,6 +850,30 @@ function getCableLength(link) {
 
 function getTotalCableLength() {
   return state.links.reduce((sum, l) => sum + getCableLength(l), 0);
+}
+
+function recalculateCableLengths() {
+  state.links.forEach(link => {
+    const from = state.devices.find(d => d.id === link.from);
+    const to = state.devices.find(d => d.id === link.to);
+    if (from && to) {
+      const distance = Math.sqrt(
+        Math.pow(from.x - to.x, 2) + 
+        Math.pow(from.y - to.y, 2)
+      );
+      link.length = Math.round(distance * 0.5);
+      
+      const standard = ETHERNET_STANDARDS[link.type] || ETHERNET_STANDARDS.cat6;
+      link.degraded = link.length > standard.maxLength;
+      
+      if (link.degraded) {
+        const overLength = link.length - standard.maxLength;
+        link.actualSpeed = Math.max(10, Math.round(standard.speed * Math.pow(0.5, overLength / 50)));
+      } else {
+        link.actualSpeed = standard.speed;
+      }
+    }
+  });
 }
 
 function deleteDevice(id) {
@@ -963,8 +1041,16 @@ function evaluate() {
   // Stop timer and check for record
   stopTimer();
   let isNewRecord = false;
+  let stagePassed = false;
   if (stage && total >= stage.passingScore) {
     isNewRecord = saveBestTime(stage.id, state.elapsedTime);
+    stagePassed = true;
+    
+    // Unlock this stage as cleared
+    if (!state.clearedStages.includes(stage.id)) {
+      state.clearedStages.push(stage.id);
+      localStorage.setItem('pn_cleared', JSON.stringify(state.clearedStages));
+    }
   }
   
   // Store result for sharing
@@ -1014,6 +1100,16 @@ function evaluate() {
       💰 ¥${calculateCost().toLocaleString()} | 📦 ${getTotalCableLength()}m | ⚡ ${spdText}
     </div>
   `;
+  
+  // Show/hide next stage button
+  const nextBtn = document.getElementById('nextStageBtn');
+  if (nextBtn) {
+    if (stagePassed && state.currentStage < stages.length - 1) {
+      nextBtn.style.display = 'inline-block';
+    } else {
+      nextBtn.style.display = 'none';
+    }
+  }
   
   document.getElementById('resultModal').classList.add('show');
 }
@@ -1098,6 +1194,20 @@ function getDesignTitle(conn, speed, comfort, redun, pcCount, cost) {
 
 function closeModal() {
   document.getElementById('resultModal').classList.remove('show');
+  // Restart timer
+  if (state.currentStage >= 0) {
+    startTimer();
+  }
+}
+
+function goNextStage() {
+  document.getElementById('resultModal').classList.remove('show');
+  const nextStageIndex = state.currentStage + 1;
+  if (nextStageIndex < stages.length) {
+    startStage(nextStageIndex);
+  } else {
+    showStageSelect();
+  }
 }
 
 // Twitter share
@@ -1199,6 +1309,7 @@ function startStage(stageIndex) {
   // Update UI
   document.getElementById('stageSelectModal').classList.remove('show');
   document.getElementById('stageInfo').style.display = 'flex';
+  document.getElementById('reqPanel').style.display = 'block';
   document.getElementById('stageIcon').textContent = stage.icon;
   document.getElementById('stageName').textContent = t(stage.name);
   
@@ -1219,7 +1330,9 @@ function startStage(stageIndex) {
 function showStageSelect() {
   document.getElementById('stageSelectModal').classList.add('show');
   document.getElementById('stageInfo').style.display = 'none';
+  document.getElementById('reqPanel').style.display = 'none';
   stopTimer();
+  state.currentStage = -1;
   renderStageSelect();
 }
 
@@ -1363,14 +1476,27 @@ function updateUIText() {
     el.textContent = t(key);
   });
   document.getElementById('langLabel').textContent = currentLang.toUpperCase();
-  document.getElementById('checkBtn').textContent = t('evaluate');
+  
+  // Update specific buttons
+  const checkBtn = document.getElementById('checkBtn');
+  if (checkBtn) checkBtn.textContent = t('evaluate');
+  
+  // Update toolbar section labels
+  const sections = document.querySelectorAll('.toolbar-section');
+  if (sections[0]) sections[0].textContent = t('devices');
+  if (sections[1]) sections[1].textContent = t('tools');
+  
   renderStageSelect();
 }
 
 // Initial setup
+state.currentStage = -1; // No stage selected
 renderStageSelect();
 updateUIText();
-updateUI();
+
+// Hide stage info and requirements on initial load
+document.getElementById('stageInfo').style.display = 'none';
+document.getElementById('reqPanel').style.display = 'none';
 
 // ========== TUTORIAL SYSTEM ==========
 const tutorial = {
