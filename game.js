@@ -1,46 +1,240 @@
-// NetDesign - Network Design Game
+// Packet Network - Network Design Game
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// ========== LOCALIZATION ==========
+let currentLang = localStorage.getItem('pn_lang') || (navigator.language.startsWith('ja') ? 'ja' : 'en');
+
+const i18n = {
+  ja: {
+    appName: 'Packet Network',
+    stages: 'ステージ',
+    devices: '機器',
+    tools: 'ツール',
+    select: '選択/移動',
+    cable: 'ケーブル',
+    delete: '削除',
+    cost: 'コスト',
+    deviceCount: '機器数',
+    linkCount: '接続数',
+    evaluate: '設計を評価',
+    connectivity: '接続性',
+    speed: '速度',
+    comfort: '快適性',
+    redundancy: '冗長性',
+    total: '総合',
+    tweet: 'ツイート',
+    retry: 'もう一度',
+    nextStage: '次のステージ',
+    stageClear: 'ステージクリア！',
+    requirements: '要件',
+    cableWarning: '⚠️ ケーブルが150mを超えています！速度低下の原因になります',
+    // Stages
+    stage1Name: '🏠 マイホーム',
+    stage1Desc: '自宅をインターネットに接続しよう',
+    stage2Name: '🏢 オフィス',
+    stage2Desc: '20人のオフィスネットワークを構築',
+    stage3Name: '🏭 データセンター',
+    stage3Desc: '高可用性のデータセンターを設計',
+    // Requirements
+    reqInternet: 'インターネット接続',
+    reqPCs: 'PC {n}台以上接続',
+    reqSpeed: '全PCが{n}Mbps以上',
+    reqRedundancy: '冗長パスあり',
+    // Titles
+    titleBeginner: '🌱 ネットワーク初心者',
+    titleEngineer: '🔧 見習いエンジニア',
+    titleDesigner: '💻 駆け出し設計士',
+    titlePro: '🏆 実力派エンジニア',
+    titleMaster: '👑 ネットワークマスター',
+    titleCostSaver: '💰 コスト削減の鬼',
+    titleRedundancy: '🛡️ 冗長性マスター',
+    titleScale: '🚀 スケールアーキテクト',
+    titleBalance: '⚖️ バランス設計師',
+    titleSpeed: '⚡ スピードスター',
+  },
+  en: {
+    appName: 'Packet Network',
+    stages: 'Stages',
+    devices: 'Devices',
+    tools: 'Tools',
+    select: 'Select/Move',
+    cable: 'Cable',
+    delete: 'Delete',
+    cost: 'Cost',
+    deviceCount: 'Devices',
+    linkCount: 'Links',
+    evaluate: 'Evaluate',
+    connectivity: 'Connectivity',
+    speed: 'Speed',
+    comfort: 'Comfort',
+    redundancy: 'Redundancy',
+    total: 'Total',
+    tweet: 'Tweet',
+    retry: 'Retry',
+    nextStage: 'Next Stage',
+    stageClear: 'Stage Clear!',
+    requirements: 'Requirements',
+    cableWarning: '⚠️ Cable exceeds 150m! This will cause speed degradation',
+    // Stages
+    stage1Name: '🏠 My Home',
+    stage1Desc: 'Connect your home to the internet',
+    stage2Name: '🏢 Office',
+    stage2Desc: 'Build a network for 20-person office',
+    stage3Name: '🏭 Data Center',
+    stage3Desc: 'Design a highly available data center',
+    // Requirements
+    reqInternet: 'Internet connection',
+    reqPCs: '{n}+ PCs connected',
+    reqSpeed: 'All PCs at {n}Mbps+',
+    reqRedundancy: 'Redundant paths',
+    // Titles
+    titleBeginner: '🌱 Network Beginner',
+    titleEngineer: '🔧 Junior Engineer',
+    titleDesigner: '💻 Novice Designer',
+    titlePro: '🏆 Pro Engineer',
+    titleMaster: '👑 Network Master',
+    titleCostSaver: '💰 Cost Optimizer',
+    titleRedundancy: '🛡️ Redundancy Master',
+    titleScale: '🚀 Scale Architect',
+    titleBalance: '⚖️ Balance Designer',
+    titleSpeed: '⚡ Speed Star',
+  }
+};
+
+function t(key, params = {}) {
+  let text = i18n[currentLang][key] || i18n['en'][key] || key;
+  Object.keys(params).forEach(k => {
+    text = text.replace(`{${k}}`, params[k]);
+  });
+  return text;
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'ja' ? 'en' : 'ja';
+  localStorage.setItem('pn_lang', currentLang);
+  updateUIText();
+}
+
+// ========== STAGES ==========
+const stages = [
+  {
+    id: 1,
+    name: 'stage1Name',
+    desc: 'stage1Desc',
+    icon: '🏠',
+    gridSize: { w: 400, h: 300 },
+    requirements: [
+      { type: 'internet', desc: 'reqInternet' },
+      { type: 'minPCs', value: 3, desc: 'reqPCs' },
+    ],
+    preplacedDevices: [
+      { type: 'internet', x: 100, y: 150, label: 'Internet', fixed: true }
+    ],
+    availableDevices: ['pc', 'router', 'switch8'],
+    passingScore: 60,
+    budgetBonus: 200000
+  },
+  {
+    id: 2,
+    name: 'stage2Name',
+    desc: 'stage2Desc',
+    icon: '🏢',
+    gridSize: { w: 800, h: 500 },
+    requirements: [
+      { type: 'internet', desc: 'reqInternet' },
+      { type: 'minPCs', value: 10, desc: 'reqPCs' },
+      { type: 'minSpeed', value: 100, desc: 'reqSpeed' },
+    ],
+    preplacedDevices: [
+      { type: 'internet', x: 100, y: 250, label: 'Internet', fixed: true }
+    ],
+    availableDevices: ['pc', 'router', 'switch8', 'switch24'],
+    passingScore: 65,
+    budgetBonus: 1000000
+  },
+  {
+    id: 3,
+    name: 'stage3Name',
+    desc: 'stage3Desc',
+    icon: '🏭',
+    gridSize: { w: 1000, h: 600 },
+    requirements: [
+      { type: 'internet', desc: 'reqInternet' },
+      { type: 'minPCs', value: 20, desc: 'reqPCs' },
+      { type: 'minSpeed', value: 1000, desc: 'reqSpeed' },
+      { type: 'redundancy', desc: 'reqRedundancy' },
+    ],
+    preplacedDevices: [
+      { type: 'internet', x: 100, y: 300, label: 'ISP-A', fixed: true },
+      { type: 'internet', x: 100, y: 400, label: 'ISP-B', fixed: true }
+    ],
+    availableDevices: ['pc', 'server', 'router', 'switch8', 'switch24', 'switch48'],
+    passingScore: 70,
+    budgetBonus: 5000000
+  }
+];
+
 // Game State
 const state = {
+  currentStage: 0,
   devices: [],
   links: [],
   selectedTool: 'select',
-  selectedDevices: [], // Multiple selection support
+  selectedDevices: [],
   dragging: null,
   dragOffset: null,
   cableStart: null,
   nextId: 1,
-  // Selection box
   selectionBox: null,
-  selectionStart: null
+  selectionStart: null,
+  clearedStages: JSON.parse(localStorage.getItem('pn_cleared') || '[]')
 };
 
 // Device costs (realistic prices in JPY)
 const COSTS = {
-  pc: 150000,        // 15万円 - 業務用PC
-  switch8: 25000,    // 2.5万円 - L2スイッチ 8ポート
-  switch24: 80000,   // 8万円 - L2スイッチ 24ポート  
-  router: 350000,    // 35万円 - 企業向けルーター
-  cable: 800         // 800円 - Cat6 LANケーブル
+  pc: 150000,         // 15万円 - 業務用PC
+  server: 500000,     // 50万円 - サーバー
+  switch8: 25000,     // 2.5万円 - L2スイッチ 8ポート
+  switch24: 80000,    // 8万円 - L2スイッチ 24ポート
+  switch48: 200000,   // 20万円 - L2スイッチ 48ポート
+  router: 350000,     // 35万円 - 企業向けルーター
+  internet: 0,        // ISPノード(固定)
+  cable: 800          // 800円 - Cat6 LANケーブル (per meter)
 };
 
 // Device colors
 const COLORS = {
   pc: '#4ecdc4',
+  server: '#a855f7',
   switch8: '#ffe66d',
   switch24: '#ffa94d',
-  router: '#ff6b6b'
+  switch48: '#f97316',
+  router: '#ff6b6b',
+  internet: '#22c55e'
 };
 
 // Device port limits
 const PORT_LIMITS = {
   pc: 1,
+  server: 2,
   switch8: 8,
   switch24: 24,
-  router: 4
+  switch48: 48,
+  router: 4,
+  internet: 1
+};
+
+// Speed per device type (Mbps)
+const DEVICE_SPEED = {
+  pc: 1000,
+  server: 10000,
+  switch8: 1000,
+  switch24: 1000,
+  switch48: 10000,
+  router: 1000,
+  internet: 1000
 };
 
 // Resize canvas
@@ -80,20 +274,29 @@ function draw() {
     const from = state.devices.find(d => d.id === link.from);
     const to = state.devices.find(d => d.id === link.to);
     if (from && to) {
-      ctx.strokeStyle = '#00d9ff';
+      // Color based on cable length
+      ctx.strokeStyle = link.degraded ? '#ff6b6b' : '#00d9ff';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(to.x, to.y);
       ctx.stroke();
       
-      // Draw link indicator
+      // Draw cable length label
       const mx = (from.x + to.x) / 2;
       const my = (from.y + to.y) / 2;
-      ctx.fillStyle = '#00d9ff';
-      ctx.beginPath();
-      ctx.arc(mx, my, 4, 0, Math.PI * 2);
-      ctx.fill();
+      
+      ctx.fillStyle = link.degraded ? '#ff6b6b' : 'rgba(0,217,255,0.8)';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${link.length}m`, mx, my - 8);
+      
+      // Warning icon for long cables
+      if (link.degraded) {
+        ctx.fillStyle = '#ff6b6b';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('⚠', mx, my + 8);
+      }
     }
   });
   
@@ -132,7 +335,11 @@ function draw() {
 }
 
 function drawDevice(device) {
-  const size = device.type === 'pc' ? 30 : 40;
+  let size = 40;
+  if (device.type === 'pc') size = 30;
+  if (device.type === 'internet') size = 50;
+  if (device.type === 'server') size = 45;
+  
   const isSelected = state.selectedDevices.includes(device.id);
   
   // Glow effect for selected
@@ -177,6 +384,32 @@ function drawDevice(device) {
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(`${usedPorts}/${PORT_LIMITS.router}`, device.x, device.y + 4);
+  } else if (device.type === 'internet') {
+    // Internet/ISP - cloud shape
+    ctx.beginPath();
+    ctx.arc(device.x, device.y, size/2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('☁', device.x, device.y + 6);
+  } else if (device.type === 'server') {
+    // Server - tall rectangle
+    ctx.beginPath();
+    ctx.roundRect(device.x - size/3, device.y - size/2, size*0.66, size, 4);
+    ctx.fill();
+    ctx.stroke();
+    // Rack lines
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const y = device.y - size/2 + 8 + i * 10;
+      ctx.beginPath();
+      ctx.moveTo(device.x - size/3 + 4, y);
+      ctx.lineTo(device.x + size/3 - 4, y);
+      ctx.stroke();
+    }
   }
   
   ctx.shadowBlur = 0;
@@ -435,15 +668,40 @@ function addLink(fromId, toId) {
   const toDevice = state.devices.find(d => d.id === toId);
   
   if (countPorts(fromId) >= PORT_LIMITS[fromDevice.type]) {
-    showHint(`${fromDevice.label}のポートが足りません`);
+    showHint(`${fromDevice.label}: Port limit reached`);
     return;
   }
   if (countPorts(toId) >= PORT_LIMITS[toDevice.type]) {
-    showHint(`${toDevice.label}のポートが足りません`);
+    showHint(`${toDevice.label}: Port limit reached`);
     return;
   }
   
-  state.links.push({ from: fromId, to: toId });
+  // Calculate cable length (1 pixel = 0.5 meter)
+  const distance = Math.sqrt(
+    Math.pow(fromDevice.x - toDevice.x, 2) + 
+    Math.pow(fromDevice.y - toDevice.y, 2)
+  );
+  const cableLength = Math.round(distance * 0.5);
+  
+  state.links.push({ 
+    from: fromId, 
+    to: toId, 
+    length: cableLength,
+    degraded: cableLength > 150
+  });
+  
+  // Warn if cable too long
+  if (cableLength > 150) {
+    showHint(t('cableWarning'));
+  }
+}
+
+function getCableLength(link) {
+  return link.length || 0;
+}
+
+function getTotalCableLength() {
+  return state.links.reduce((sum, l) => sum + getCableLength(l), 0);
 }
 
 function deleteDevice(id) {
@@ -458,7 +716,16 @@ function updateUI() {
   const totalCost = calculateCost();
   document.getElementById('costValue').textContent = `¥${totalCost.toLocaleString()}`;
   document.getElementById('deviceCount').textContent = state.devices.length;
-  document.getElementById('linkCount').textContent = state.links.length;
+  
+  const totalCable = getTotalCableLength();
+  const cableLengthEl = document.getElementById('cableLength');
+  if (cableLengthEl) {
+    cableLengthEl.textContent = `${totalCable}m`;
+    cableLengthEl.style.color = state.links.some(l => l.degraded) ? '#ff6b6b' : '#fff';
+  }
+  
+  // Update requirements
+  updateRequirements();
   
   // Check connectivity
   const pcs = state.devices.filter(d => d.type === 'pc');
@@ -482,7 +749,8 @@ function calculateCost() {
   state.devices.forEach(d => {
     cost += COSTS[d.type] || 0;
   });
-  cost += state.links.length * COSTS.cable;
+  // Cable cost per meter
+  cost += getTotalCableLength() * COSTS.cable;
   return cost;
 }
 
@@ -526,59 +794,63 @@ function showHint(message) {
 document.getElementById('checkBtn').addEventListener('click', evaluate);
 
 function evaluate() {
-  const pcs = state.devices.filter(d => d.type === 'pc');
-  const switches = state.devices.filter(d => d.type === 'switch8' || d.type === 'switch24');
-  const routers = state.devices.filter(d => d.type === 'router');
+  const stage = stages[state.currentStage];
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server');
+  const switches = state.devices.filter(d => d.type.startsWith('switch'));
   
-  // Scores
-  let connectivity = 0;
-  let efficiency = 0;
-  let scalability = 0;
-  let redundancy = 0;
+  // New scoring categories
+  let connectivity = 0;  // 接続性
+  let speed = 0;         // 速度
+  let comfort = 0;       // 快適性
+  let redundancy = 0;    // 冗長性
   
-  // 1. Connectivity (40%)
-  if (pcs.length >= 2 && checkAllPCsConnected()) {
-    connectivity = 100;
-  } else if (pcs.length < 2) {
-    connectivity = 0;
+  // 1. Connectivity (30%) - Are all requirements met?
+  if (stage) {
+    const reqsMet = stage.requirements.filter(r => checkRequirement(r)).length;
+    connectivity = Math.floor((reqsMet / stage.requirements.length) * 100);
   } else {
-    // Partial connectivity
-    const connectedPCs = countConnectedPCs();
-    connectivity = Math.floor((connectedPCs / pcs.length) * 100);
+    connectivity = checkAllPCsConnected() ? 100 : 0;
   }
   
-  // 2. Efficiency (30%) - cost per connected PC
-  if (pcs.length > 0 && connectivity > 0) {
+  // 2. Speed (25%) - Based on cable lengths and bottlenecks
+  const degradedLinks = state.links.filter(l => l.degraded).length;
+  if (state.links.length === 0) {
+    speed = 0;
+  } else if (degradedLinks === 0) {
+    speed = 100;
+  } else {
+    speed = Math.max(0, 100 - (degradedLinks * 30));
+  }
+  
+  // 3. Comfort (25%) - Cost efficiency & port availability
+  if (pcs.length > 0) {
     const costPerPC = calculateCost() / pcs.length;
-    if (costPerPC < 30000) efficiency = 100;
-    else if (costPerPC < 50000) efficiency = 80;
-    else if (costPerPC < 80000) efficiency = 60;
-    else if (costPerPC < 120000) efficiency = 40;
-    else efficiency = 20;
+    let costScore = 0;
+    if (costPerPC < 100000) costScore = 100;
+    else if (costPerPC < 200000) costScore = 80;
+    else if (costPerPC < 350000) costScore = 60;
+    else if (costPerPC < 500000) costScore = 40;
+    else costScore = 20;
+    
+    // Port availability bonus
+    let portScore = 50;
+    if (switches.length > 0) {
+      const avgCapacity = switches.reduce((sum, sw) => sum + countPorts(sw.id) / PORT_LIMITS[sw.type], 0) / switches.length;
+      portScore = avgCapacity < 0.5 ? 100 : avgCapacity < 0.75 ? 70 : 40;
+    }
+    
+    comfort = Math.floor((costScore + portScore) / 2);
   }
   
-  // 3. Scalability (20%) - based on switch usage
-  if (switches.length > 0) {
-    const avgPortUsage = switches.reduce((sum, sw) => sum + countPorts(sw.id), 0) / switches.length;
-    const avgCapacity = switches.reduce((sum, sw) => sum + countPorts(sw.id) / PORT_LIMITS[sw.type], 0) / switches.length;
-    if (avgCapacity < 0.5) scalability = 100; // Room to grow
-    else if (avgCapacity < 0.75) scalability = 70;
-    else scalability = 40;
-  } else if (pcs.length <= 2) {
-    scalability = 50; // Direct connection is OK for 2 PCs
-  } else {
-    scalability = 20; // No switches but many PCs
-  }
-  
-  // 4. Redundancy (10%) - multiple paths
+  // 4. Redundancy (20%) - Multiple paths
   redundancy = calculateRedundancy();
   
   // Total score
   const total = Math.floor(
-    connectivity * 0.4 +
-    efficiency * 0.3 +
-    scalability * 0.2 +
-    redundancy * 0.1
+    connectivity * 0.3 +
+    speed * 0.25 +
+    comfort * 0.25 +
+    redundancy * 0.2
   );
   
   // Grade
@@ -589,19 +861,21 @@ function evaluate() {
   else if (total >= 60) grade = 'C';
   
   // Title based on design style
-  const title = getDesignTitle(connectivity, efficiency, scalability, redundancy, pcs.length, calculateCost());
+  const title = getDesignTitle(connectivity, speed, comfort, redundancy, pcs.length, calculateCost());
   
   // Store result for sharing
   lastEvalResult = {
     grade,
     total,
     connectivity,
-    efficiency,
-    scalability,
+    speed,
+    comfort,
     redundancy,
     deviceCount: state.devices.length,
     cost: calculateCost(),
-    title
+    cableLength: getTotalCableLength(),
+    title,
+    stageName: stages[state.currentStage] ? t(stages[state.currentStage].name) : 'Sandbox'
   };
   
   // Show result
@@ -615,16 +889,16 @@ function evaluate() {
   document.getElementById('resultTitleText').textContent = title.name;
   
   scoreDetail.innerHTML = `
-    <div class="score-row"><span>接続性</span><span>${connectivity}/100</span></div>
-    <div class="score-row"><span>効率性</span><span>${efficiency}/100</span></div>
-    <div class="score-row"><span>拡張性</span><span>${scalability}/100</span></div>
-    <div class="score-row"><span>冗長性</span><span>${redundancy}/100</span></div>
+    <div class="score-row"><span>🔗 ${t('connectivity')}</span><span>${connectivity}/100</span></div>
+    <div class="score-row"><span>⚡ ${t('speed')}</span><span>${speed}/100</span></div>
+    <div class="score-row"><span>🏠 ${t('comfort')}</span><span>${comfort}/100</span></div>
+    <div class="score-row"><span>🛡️ ${t('redundancy')}</span><span>${redundancy}/100</span></div>
     <div class="score-row" style="border-top:2px solid #00d9ff;margin-top:10px;padding-top:10px;">
-      <span><strong>総合</strong></span>
+      <span><strong>${t('total')}</strong></span>
       <span><strong>${total}/100</strong></span>
     </div>
-    <div style="margin-top:15px;color:#888;font-size:0.9em;">
-      ${getAdvice(connectivity, efficiency, scalability, redundancy)}
+    <div style="margin-top:10px;font-size:0.85em;color:#888;">
+      💰 ${t('cost')}: ¥${calculateCost().toLocaleString()} | 📦 Cable: ${getTotalCableLength()}m
     </div>
   `;
   
@@ -677,42 +951,36 @@ function getAdvice(conn, eff, scale, redun) {
 }
 
 // Design title generator - makes sharing fun!
-function getDesignTitle(conn, eff, scale, redun, pcCount, cost) {
+function getDesignTitle(conn, speed, comfort, redun, pcCount, cost) {
   // Incomplete
-  if (conn < 100) {
-    return { name: '🚧 工事中エンジニア', emoji: '🚧' };
+  if (conn < 50) {
+    return { name: t('titleBeginner'), emoji: '🌱' };
   }
   
   // Special titles based on characteristics
-  if (eff >= 90 && cost < pcCount * 50000) {
-    return { name: '💰 コスト削減の鬼', emoji: '💰' };
+  if (speed >= 95) {
+    return { name: t('titleSpeed'), emoji: '⚡' };
+  }
+  if (comfort >= 90 && cost < pcCount * 100000) {
+    return { name: t('titleCostSaver'), emoji: '💰' };
   }
   if (redun >= 80) {
-    return { name: '🛡️ 冗長性マスター', emoji: '🛡️' };
+    return { name: t('titleRedundancy'), emoji: '🛡️' };
   }
-  if (scale >= 90) {
-    return { name: '🚀 スケールアーキテクト', emoji: '🚀' };
+  if (comfort >= 80 && speed >= 80) {
+    return { name: t('titleBalance'), emoji: '⚖️' };
   }
-  if (eff >= 80 && scale >= 80) {
-    return { name: '⚖️ バランス設計師', emoji: '⚖️' };
-  }
-  if (pcCount >= 6 && conn === 100) {
-    return { name: '🌐 大規模ネットワーカー', emoji: '🌐' };
-  }
-  if (eff >= 70) {
-    return { name: '📊 効率重視派', emoji: '📊' };
-  }
-  if (scale >= 70) {
-    return { name: '📈 未来志向設計士', emoji: '📈' };
+  if (pcCount >= 10) {
+    return { name: t('titleScale'), emoji: '🚀' };
   }
   
   // Default titles by grade
-  const total = Math.floor(conn * 0.4 + eff * 0.3 + scale * 0.2 + redun * 0.1);
-  if (total >= 90) return { name: '👑 ネットワークマスター', emoji: '👑' };
-  if (total >= 80) return { name: '🏆 実力派エンジニア', emoji: '🏆' };
-  if (total >= 70) return { name: '💻 駆け出し設計士', emoji: '💻' };
-  if (total >= 60) return { name: '🔧 見習いエンジニア', emoji: '🔧' };
-  return { name: '🌱 ネットワーク初心者', emoji: '🌱' };
+  const total = Math.floor(conn * 0.3 + speed * 0.25 + comfort * 0.25 + redun * 0.2);
+  if (total >= 90) return { name: t('titleMaster'), emoji: '👑' };
+  if (total >= 80) return { name: t('titlePro'), emoji: '🏆' };
+  if (total >= 70) return { name: t('titleDesigner'), emoji: '💻' };
+  if (total >= 60) return { name: t('titleEngineer'), emoji: '🔧' };
+  return { name: t('titleBeginner'), emoji: '🌱' };
 }
 
 function closeModal() {
@@ -725,22 +993,36 @@ let lastEvalResult = null;
 document.getElementById('tweetBtn').addEventListener('click', () => {
   if (!lastEvalResult) return;
   
-  const { grade, total, connectivity, efficiency, scalability, redundancy, deviceCount, cost, title } = lastEvalResult;
+  const { grade, total, connectivity, speed, comfort, redundancy, deviceCount, cost, cableLength, title, stageName } = lastEvalResult;
   
   const badges = { 'S': '👑', 'A': '🏆', 'B': '🥇', 'C': '🥈', 'D': '📝' };
+  const stars = (score) => '★'.repeat(Math.ceil(score/20)) + '☆'.repeat(5-Math.ceil(score/20));
   
-  const text = `${title.emoji} 私のネットワーク設計力は...
+  const text = currentLang === 'ja' 
+    ? `${title.emoji} 私のネットワーク設計力は...
 
 「${title.name}」
-
 ${badges[grade]} ${grade}ランク（${total}点）
 
-■ 接続性: ${'★'.repeat(Math.ceil(connectivity/20))}${'☆'.repeat(5-Math.ceil(connectivity/20))}
-■ 効率性: ${'★'.repeat(Math.ceil(efficiency/20))}${'☆'.repeat(5-Math.ceil(efficiency/20))}
-■ 拡張性: ${'★'.repeat(Math.ceil(scalability/20))}${'☆'.repeat(5-Math.ceil(scalability/20))}
-■ 冗長性: ${'★'.repeat(Math.ceil(redundancy/20))}${'☆'.repeat(5-Math.ceil(redundancy/20))}
+🔗 接続: ${stars(connectivity)}
+⚡ 速度: ${stars(speed)}
+🏠 快適: ${stars(comfort)}
+🛡 冗長: ${stars(redundancy)}
 
-#PacketNetwork #ネットワーク設計`;
+🎮 ${stageName}
+#PacketNetwork`
+    : `${title.emoji} My network design skill is...
+
+"${title.name}"
+${badges[grade]} Rank ${grade} (${total}pts)
+
+🔗 Connect: ${stars(connectivity)}
+⚡ Speed: ${stars(speed)}
+🏠 Comfort: ${stars(comfort)}
+🛡 Backup: ${stars(redundancy)}
+
+🎮 ${stageName}
+#PacketNetwork`;
   
   const url = 'https://packetnetwork.exe.xyz:8000/';
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
@@ -748,7 +1030,165 @@ ${badges[grade]} ${grade}ランク（${total}点）
   window.open(tweetUrl, '_blank', 'width=550,height=420');
 });
 
-// Initial UI update
+// ========== STAGE MANAGEMENT ==========
+function renderStageSelect() {
+  const grid = document.getElementById('stageGrid');
+  grid.innerHTML = '';
+  
+  stages.forEach((stage, idx) => {
+    const cleared = state.clearedStages.includes(stage.id);
+    const locked = idx > 0 && !state.clearedStages.includes(stages[idx-1].id);
+    
+    const card = document.createElement('div');
+    card.className = `stage-card ${cleared ? 'cleared' : ''} ${locked ? 'locked' : ''}`;
+    card.innerHTML = `
+      <div class="icon">${stage.icon}</div>
+      <div class="name">${t(stage.name)}</div>
+      <div class="desc">${t(stage.desc)}</div>
+      ${cleared ? '<div class="badge">✓ Clear</div>' : ''}
+    `;
+    
+    if (!locked) {
+      card.onclick = () => startStage(idx);
+    }
+    
+    grid.appendChild(card);
+  });
+}
+
+function startStage(stageIndex) {
+  state.currentStage = stageIndex;
+  const stage = stages[stageIndex];
+  
+  // Reset game state
+  state.devices = [];
+  state.links = [];
+  state.nextId = 1;
+  state.selectedDevices = [];
+  
+  // Add preplaced devices
+  stage.preplacedDevices.forEach(d => {
+    state.devices.push({
+      id: state.nextId++,
+      type: d.type,
+      x: d.x,
+      y: d.y,
+      label: d.label,
+      fixed: d.fixed || false
+    });
+  });
+  
+  // Update UI
+  document.getElementById('stageSelectModal').classList.remove('show');
+  document.getElementById('stageInfo').style.display = 'flex';
+  document.getElementById('stageIcon').textContent = stage.icon;
+  document.getElementById('stageName').textContent = t(stage.name);
+  
+  updateRequirements();
+  updateUI();
+  draw();
+}
+
+function showStageSelect() {
+  document.getElementById('stageSelectModal').classList.add('show');
+  document.getElementById('stageInfo').style.display = 'none';
+  renderStageSelect();
+}
+
+function updateRequirements() {
+  const stage = stages[state.currentStage];
+  if (!stage) return;
+  
+  const list = document.getElementById('reqList');
+  list.innerHTML = '';
+  
+  stage.requirements.forEach(req => {
+    const met = checkRequirement(req);
+    const div = document.createElement('div');
+    div.className = `req-item ${met ? 'met' : ''}`;
+    div.textContent = t(req.desc, { n: req.value });
+    list.appendChild(div);
+  });
+}
+
+function checkRequirement(req) {
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server');
+  const internet = state.devices.find(d => d.type === 'internet');
+  
+  switch(req.type) {
+    case 'internet':
+      return internet && isConnectedToInternet();
+    case 'minPCs':
+      return pcs.length >= req.value && pcs.every(pc => isDeviceConnected(pc.id));
+    case 'minSpeed':
+      return getMinSpeed() >= req.value;
+    case 'redundancy':
+      return hasRedundantPaths();
+    default:
+      return false;
+  }
+}
+
+function isConnectedToInternet() {
+  const internet = state.devices.find(d => d.type === 'internet');
+  if (!internet) return false;
+  
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server');
+  return pcs.length > 0 && pcs.every(pc => canReach(internet.id, pc.id));
+}
+
+function isDeviceConnected(deviceId) {
+  const internet = state.devices.find(d => d.type === 'internet');
+  if (!internet) return false;
+  return canReach(internet.id, deviceId);
+}
+
+function canReach(fromId, toId) {
+  const visited = new Set();
+  const queue = [fromId];
+  visited.add(fromId);
+  
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === toId) return true;
+    
+    state.links.forEach(link => {
+      let neighbor = null;
+      if (link.from === current) neighbor = link.to;
+      if (link.to === current) neighbor = link.from;
+      if (neighbor && !visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    });
+  }
+  return false;
+}
+
+function getMinSpeed() {
+  // Simplified: check if any cable is degraded
+  const hasDegraded = state.links.some(l => l.degraded);
+  return hasDegraded ? 10 : 1000;
+}
+
+function hasRedundantPaths() {
+  // Check if there are multiple paths (more links than devices - 1)
+  return state.links.length > state.devices.length - 1;
+}
+
+function updateUIText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  document.getElementById('langLabel').textContent = currentLang.toUpperCase();
+  document.getElementById('checkBtn').textContent = t('evaluate');
+  renderStageSelect();
+}
+
+// Initial setup
+renderStageSelect();
+updateUIText();
 updateUI();
 
 // ========== TUTORIAL SYSTEM ==========
