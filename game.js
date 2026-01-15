@@ -816,12 +816,13 @@ function addLink(fromId, toId) {
     return;
   }
   
-  // Calculate cable length (1 pixel = 0.5 meter)
+  // Calculate cable length (1 pixel = 0.1 meter = 10cm)
+  // This means 1000px canvas width = 100m (Cat6 max length)
   const distance = Math.sqrt(
     Math.pow(fromDevice.x - toDevice.x, 2) + 
     Math.pow(fromDevice.y - toDevice.y, 2)
   );
-  const cableLength = Math.round(distance * 0.5);
+  const cableLength = Math.round(distance * 0.1);
   
   const standard = ETHERNET_STANDARDS[currentCableType];
   const degraded = cableLength > standard.maxLength;
@@ -867,7 +868,7 @@ function recalculateCableLengths() {
         Math.pow(from.x - to.x, 2) + 
         Math.pow(from.y - to.y, 2)
       );
-      link.length = Math.round(distance * 0.5);
+      link.length = Math.round(distance * 0.1);
       
       const standard = ETHERNET_STANDARDS[link.type] || ETHERNET_STANDARDS.cat6;
       link.degraded = link.length > standard.maxLength;

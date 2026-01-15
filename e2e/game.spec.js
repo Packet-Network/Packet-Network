@@ -143,13 +143,13 @@ test.describe('Packet Network E2E Tests', () => {
 
     test('should calculate cable length correctly', async ({ page }) => {
       await page.evaluate(() => {
-        addLink(2, 3); // Router to PC (150px apart = 75m)
+        addLink(2, 3); // Router to PC (150px apart = 15m)
         updateUI();
         draw();
       });
       
       const cableLength = await page.evaluate(() => state.links[0].length);
-      expect(cableLength).toBe(75); // 150px * 0.5 = 75m
+      expect(cableLength).toBe(15); // 150px * 0.1 = 15m
     });
 
     test('should recalculate cable length when device is moved', async ({ page }) => {
@@ -198,9 +198,9 @@ test.describe('Packet Network E2E Tests', () => {
     test('should mark cable as degraded when over 100m (Cat6)', async ({ page }) => {
       // Create a long cable
       await page.evaluate(() => {
-        // Move PC far away (250m = 500px)
+        // Move PC far away (110m = 1100px from router)
         const pc = state.devices.find(d => d.type === 'pc');
-        pc.x = 850; // 500px from router = 250m
+        pc.x = 1450; // 1100px from router at 350 = 110m
         addLink(2, 3);
         updateUI();
         draw();
@@ -252,13 +252,13 @@ test.describe('Packet Network E2E Tests', () => {
     test('should show reduced speed score for long cables', async ({ page }) => {
       await page.locator('.stage-card').first().click();
       
-      // Build network with long cable
+      // Build network with very long cable (>100m = >1000px)
       await page.evaluate(() => {
-        addDevice('router', 600, 250); // Far from Internet
-        addDevice('pc', 700, 150);
-        addDevice('pc', 700, 250);
-        addDevice('pc', 700, 350);
-        addLink(1, 2);
+        addDevice('router', 1200, 250); // Very far from Internet at ~100
+        addDevice('pc', 1300, 150);
+        addDevice('pc', 1300, 250);
+        addDevice('pc', 1300, 350);
+        addLink(1, 2); // This cable will be >100m
         addLink(2, 3);
         addLink(2, 4);
         addLink(2, 5);
