@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetDesign - ネットワーク設計ゲーム</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #16213e;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #0f3460;
+    }
+    header h1 { font-size: 1.4em; color: #00d9ff; }
+    .score-panel {
+      display: flex;
+      gap: 20px;
+    }
+    .score-item {
+      text-align: center;
+    }
+    .score-item .label { font-size: 0.75em; color: #888; }
+    .score-item .value { font-size: 1.2em; font-weight: bold; }
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+    .toolbar {
+      width: 120px;
+      background: #16213e;
+      padding: 15px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-right: 2px solid #0f3460;
+    }
+    .tool-btn {
+      background: #0f3460;
+      border: 2px solid #0f3460;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .tool-btn:hover { border-color: #00d9ff; }
+    .tool-btn.selected { border-color: #00d9ff; background: #1a4a7a; }
+    .tool-btn .icon { font-size: 1.8em; }
+    .tool-btn .name { font-size: 0.75em; margin-top: 5px; }
+    .tool-btn .cost { font-size: 0.65em; color: #ffd700; }
+    .canvas-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .status-bar {
+      background: #16213e;
+      padding: 8px 20px;
+      font-size: 0.85em;
+      border-top: 2px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+    }
+    .status-bar .hint { color: #888; }
+    .status-bar .connectivity { color: #00d9ff; }
+    .tooltip {
+      position: absolute;
+      background: #0f3460;
+      border: 1px solid #00d9ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      pointer-events: none;
+      display: none;
+      z-index: 100;
+    }
+    .check-btn {
+      background: #00d9ff;
+      color: #1a1a2e;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .check-btn:hover { background: #00b8d4; }
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      max-width: 400px;
+    }
+    .modal h2 { color: #00d9ff; margin-bottom: 20px; }
+    .modal .score-detail { margin: 15px 0; text-align: left; }
+    .modal .score-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #0f3460;
+    }
+    .modal button {
+      margin-top: 20px;
+      padding: 10px 30px;
+      font-size: 1em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌐 NetDesign</h1>
+    <div class="score-panel">
+      <div class="score-item">
+        <div class="label">コスト</div>
+        <div class="value" id="costValue">¥0</div>
+      </div>
+      <div class="score-item">
+        <div class="label">機器数</div>
+        <div class="value" id="deviceCount">0</div>
+      </div>
+      <div class="score-item">
+        <div class="label">接続数</div>
+        <div class="value" id="linkCount">0</div>
+      </div>
+    </div>
+  </header>
+  
+  <div class="main-container">
+    <div class="toolbar">
+      <div class="tool-btn selected" data-tool="select">
+        <div class="icon">🖱️</div>
+        <div class="name">選択</div>
+      </div>
+      <div class="tool-btn" data-tool="pc">
+        <div class="icon">💻</div>
+        <div class="name">PC</div>
+        <div class="cost">¥10,000</div>
+      </div>
+      <div class="tool-btn" data-tool="switch">
+        <div class="icon">🔲</div>
+        <div class="name">スイッチ</div>
+        <div class="cost">¥50,000</div>
+      </div>
+      <div class="tool-btn" data-tool="router">
+        <div class="icon">📡</div>
+        <div class="name">ルーター</div>
+        <div class="cost">¥100,000</div>
+      </div>
+      <div class="tool-btn" data-tool="cable">
+        <div class="icon">🔗</div>
+        <div class="name">ケーブル</div>
+        <div class="cost">¥1,000</div>
+      </div>
+      <div class="tool-btn" data-tool="delete">
+        <div class="icon">🗑️</div>
+        <div class="name">削除</div>
+      </div>
+    </div>
+    
+    <div class="canvas-area">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+  </div>
+  
+  <div class="status-bar">
+    <span class="hint">💡 ヒント: すべてのPCが通信できるようにネットワークを構築しよう</span>
+    <span class="connectivity" id="connectivityStatus">接続状態: 確認中...</span>
+    <button class="check-btn" id="checkBtn">設計を評価</button>
+  </div>
+  
+  <div class="tooltip" id="tooltip"></div>
+  
+  <div class="modal" id="resultModal">
+    <div class="modal-content">
+      <h2 id="resultTitle">評価結果</h2>
+      <div class="score-detail" id="scoreDetail"></div>
+      <button class="check-btn" onclick="closeModal()">閉じる</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
