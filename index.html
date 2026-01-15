@@ -173,6 +173,105 @@
       gap: 8px;
     }
     .twitter-btn:hover { background: #0c85d0; }
+    
+    /* Tutorial */
+    .tutorial-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 300;
+      display: none;
+    }
+    .tutorial-overlay.show { display: block; }
+    .tutorial-box {
+      position: absolute;
+      background: linear-gradient(135deg, #1a1a3e, #16213e);
+      border: 2px solid #00d9ff;
+      border-radius: 16px;
+      padding: 25px;
+      max-width: 350px;
+      box-shadow: 0 0 30px rgba(0,217,255,0.3);
+      z-index: 301;
+    }
+    .tutorial-step {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: #00d9ff;
+      color: #000;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+    .tutorial-box h3 {
+      color: #00d9ff;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    .tutorial-box p {
+      color: #ccc;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .tutorial-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .tutorial-skip {
+      background: transparent;
+      border: 1px solid #666;
+      color: #888;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tutorial-next {
+      background: #00d9ff;
+      border: none;
+      color: #000;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tutorial-highlight {
+      position: absolute;
+      border: 3px solid #00d9ff;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,217,255,0.5);
+      pointer-events: none;
+      z-index: 299;
+    }
+    
+    /* Result enhancements */
+    .result-title-badge {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+    .result-grade {
+      font-size: 2.5em;
+      font-weight: bold;
+      background: linear-gradient(90deg, #00d9ff, #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .result-title-text {
+      color: #ffd700;
+      font-size: 1.1em;
+      margin: 10px 0 20px;
+    }
+    .share-image-btn {
+      background: linear-gradient(90deg, #ff6b6b, #ffa94d);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -295,16 +394,32 @@
   
   <div class="tooltip" id="tooltip"></div>
   
+  <!-- Tutorial Overlay -->
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-box" id="tutorialBox">
+      <div class="tutorial-step" id="tutorialStep">1/5</div>
+      <h3 id="tutorialTitle"></h3>
+      <p id="tutorialText"></p>
+      <div class="tutorial-buttons">
+        <button class="tutorial-skip" onclick="skipTutorial()">スキップ</button>
+        <button class="tutorial-next" id="tutorialNext">次へ</button>
+      </div>
+    </div>
+    <div class="tutorial-highlight" id="tutorialHighlight"></div>
+  </div>
+
   <div class="modal" id="resultModal">
-    <div class="modal-content">
-      <h2 id="resultTitle">評価結果</h2>
+    <div class="modal-content" style="max-width:450px;">
+      <div class="result-title-badge" id="resultBadge">🏆</div>
+      <div class="result-grade" id="resultGrade">A</div>
+      <div class="result-title-text" id="resultTitleText">称号</div>
       <div class="score-detail" id="scoreDetail"></div>
       <div class="share-buttons">
         <button class="twitter-btn" id="tweetBtn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          結果をツイート
+          ツイート
         </button>
-        <button class="check-btn" onclick="closeModal()">閉じる</button>
+        <button class="check-btn" onclick="closeModal()">もう一度</button>
       </div>
     </div>
   </div>

@@ -588,6 +588,9 @@ function evaluate() {
   else if (total >= 70) grade = 'B';
   else if (total >= 60) grade = 'C';
   
+  // Title based on design style
+  const title = getDesignTitle(connectivity, efficiency, scalability, redundancy, pcs.length, calculateCost());
+  
   // Store result for sharing
   lastEvalResult = {
     grade,
@@ -597,14 +600,19 @@ function evaluate() {
     scalability,
     redundancy,
     deviceCount: state.devices.length,
-    cost: calculateCost()
+    cost: calculateCost(),
+    title
   };
   
   // Show result
   const resultTitle = document.getElementById('resultTitle');
   const scoreDetail = document.getElementById('scoreDetail');
   
-  resultTitle.textContent = connectivity === 100 ? `評価: ${grade} (${total}点)` : '未完成';
+  // Update modal display
+  const badges = { 'S': '👑', 'A': '🏆', 'B': '🥇', 'C': '🥈', 'D': '📝' };
+  document.getElementById('resultBadge').textContent = badges[grade] || '🌐';
+  document.getElementById('resultGrade').textContent = connectivity === 100 ? `${grade}ランク (${total}点)` : '未完成';
+  document.getElementById('resultTitleText').textContent = title.name;
   
   scoreDetail.innerHTML = `
     <div class="score-row"><span>接続性</span><span>${connectivity}/100</span></div>
@@ -668,6 +676,45 @@ function getAdvice(conn, eff, scale, redun) {
   return '🎉 素晴らしい設計です！';
 }
 
+// Design title generator - makes sharing fun!
+function getDesignTitle(conn, eff, scale, redun, pcCount, cost) {
+  // Incomplete
+  if (conn < 100) {
+    return { name: '🚧 工事中エンジニア', emoji: '🚧' };
+  }
+  
+  // Special titles based on characteristics
+  if (eff >= 90 && cost < pcCount * 50000) {
+    return { name: '💰 コスト削減の鬼', emoji: '💰' };
+  }
+  if (redun >= 80) {
+    return { name: '🛡️ 冗長性マスター', emoji: '🛡️' };
+  }
+  if (scale >= 90) {
+    return { name: '🚀 スケールアーキテクト', emoji: '🚀' };
+  }
+  if (eff >= 80 && scale >= 80) {
+    return { name: '⚖️ バランス設計師', emoji: '⚖️' };
+  }
+  if (pcCount >= 6 && conn === 100) {
+    return { name: '🌐 大規模ネットワーカー', emoji: '🌐' };
+  }
+  if (eff >= 70) {
+    return { name: '📊 効率重視派', emoji: '📊' };
+  }
+  if (scale >= 70) {
+    return { name: '📈 未来志向設計士', emoji: '📈' };
+  }
+  
+  // Default titles by grade
+  const total = Math.floor(conn * 0.4 + eff * 0.3 + scale * 0.2 + redun * 0.1);
+  if (total >= 90) return { name: '👑 ネットワークマスター', emoji: '👑' };
+  if (total >= 80) return { name: '🏆 実力派エンジニア', emoji: '🏆' };
+  if (total >= 70) return { name: '💻 駆け出し設計士', emoji: '💻' };
+  if (total >= 60) return { name: '🔧 見習いエンジニア', emoji: '🔧' };
+  return { name: '🌱 ネットワーク初心者', emoji: '🌱' };
+}
+
 function closeModal() {
   document.getElementById('resultModal').classList.remove('show');
 }
@@ -678,24 +725,20 @@ let lastEvalResult = null;
 document.getElementById('tweetBtn').addEventListener('click', () => {
   if (!lastEvalResult) return;
   
-  const { grade, total, connectivity, efficiency, scalability, redundancy, deviceCount, cost } = lastEvalResult;
+  const { grade, total, connectivity, efficiency, scalability, redundancy, deviceCount, cost, title } = lastEvalResult;
   
-  const gradeEmoji = {
-    'S': '🏆',
-    'A': '🥇', 
-    'B': '🥈',
-    'C': '🥉',
-    'D': '📝'
-  };
+  const badges = { 'S': '👑', 'A': '🏆', 'B': '🥇', 'C': '🥈', 'D': '📝' };
   
-  const text = `${gradeEmoji[grade] || '🌐'} Packet Networkで設計評価 ${grade}ランク (${total}点) を獲得！
+  const text = `${title.emoji} 私のネットワーク設計力は...
 
-📊 接続性: ${connectivity}/100
-⚡ 効率性: ${efficiency}/100
-📈 拡張性: ${scalability}/100
-🛡️ 冗長性: ${redundancy}/100
+「${title.name}」
 
-🖥️ 機器数: ${deviceCount} | 💰 コスト: ¥${cost.toLocaleString()}
+${badges[grade]} ${grade}ランク（${total}点）
+
+■ 接続性: ${'★'.repeat(Math.ceil(connectivity/20))}${'☆'.repeat(5-Math.ceil(connectivity/20))}
+■ 効率性: ${'★'.repeat(Math.ceil(efficiency/20))}${'☆'.repeat(5-Math.ceil(efficiency/20))}
+■ 拡張性: ${'★'.repeat(Math.ceil(scalability/20))}${'☆'.repeat(5-Math.ceil(scalability/20))}
+■ 冗長性: ${'★'.repeat(Math.ceil(redundancy/20))}${'☆'.repeat(5-Math.ceil(redundancy/20))}
 
 #PacketNetwork #ネットワーク設計`;
   
@@ -707,3 +750,109 @@ document.getElementById('tweetBtn').addEventListener('click', () => {
 
 // Initial UI update
 updateUI();
+
+// ========== TUTORIAL SYSTEM ==========
+const tutorial = {
+  currentStep: 0,
+  steps: [
+    {
+      title: '🎉 Packet Networkへようこそ！',
+      text: 'ネットワーク設計をゲームで学びましょう。\nまずは基本操作を説明します！',
+      target: null,
+      position: 'center'
+    },
+    {
+      title: '💻 機器を配置しよう',
+      text: '左の「PC」をキャンバスに\nドラッグ&ドロップしてください。',
+      target: '[data-device="pc"]',
+      position: 'right'
+    },
+    {
+      title: '🔳 スイッチを追加',
+      text: '複数のPCをつなぐには\nスイッチが必要です。\nL2SWもドラッグしてみましょう。',
+      target: '[data-device="switch8"]',
+      position: 'right'
+    },
+    {
+      title: '🔗 ケーブルで接続',
+      text: '「ケーブル」ツールを選んで\n機器をクリックして接続します。\n全てのPCをつなげましょう！',
+      target: '[data-tool="cable"]',
+      position: 'right'
+    },
+    {
+      title: '🏆 設計を評価！',
+      text: '完成したら「設計を評価」ボタンで\nスコアをチェック！\n結果をTwitterでシェアしよう🚀',
+      target: '#checkBtn',
+      position: 'top'
+    }
+  ]
+};
+
+function showTutorial() {
+  const overlay = document.getElementById('tutorialOverlay');
+  overlay.classList.add('show');
+  showTutorialStep(0);
+}
+
+function showTutorialStep(stepIndex) {
+  tutorial.currentStep = stepIndex;
+  const step = tutorial.steps[stepIndex];
+  if (!step) {
+    skipTutorial();
+    return;
+  }
+  
+  document.getElementById('tutorialStep').textContent = `${stepIndex + 1}/${tutorial.steps.length}`;
+  document.getElementById('tutorialTitle').textContent = step.title;
+  document.getElementById('tutorialText').textContent = step.text;
+  
+  const box = document.getElementById('tutorialBox');
+  const highlight = document.getElementById('tutorialHighlight');
+  
+  if (step.target) {
+    const target = document.querySelector(step.target);
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      highlight.style.display = 'block';
+      highlight.style.left = (rect.left - 5) + 'px';
+      highlight.style.top = (rect.top - 5) + 'px';
+      highlight.style.width = (rect.width + 10) + 'px';
+      highlight.style.height = (rect.height + 10) + 'px';
+      
+      // Position tutorial box
+      if (step.position === 'right') {
+        box.style.left = (rect.right + 20) + 'px';
+        box.style.top = rect.top + 'px';
+      } else if (step.position === 'top') {
+        box.style.left = (rect.left - 100) + 'px';
+        box.style.top = (rect.top - 180) + 'px';
+      }
+    }
+  } else {
+    highlight.style.display = 'none';
+    box.style.left = '50%';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
+  
+  document.getElementById('tutorialNext').textContent = 
+    stepIndex === tutorial.steps.length - 1 ? '始める！' : '次へ';
+}
+
+function skipTutorial() {
+  document.getElementById('tutorialOverlay').classList.remove('show');
+  localStorage.setItem('packetnetwork_tutorial_done', 'true');
+}
+
+document.getElementById('tutorialNext').addEventListener('click', () => {
+  if (tutorial.currentStep < tutorial.steps.length - 1) {
+    showTutorialStep(tutorial.currentStep + 1);
+  } else {
+    skipTutorial();
+  }
+});
+
+// Show tutorial on first visit
+if (!localStorage.getItem('packetnetwork_tutorial_done')) {
+  setTimeout(showTutorial, 500);
+}
