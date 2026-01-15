@@ -875,6 +875,303 @@ canvas.addEventListener('mouseleave', () => {
   document.getElementById('tooltip').style.display = 'none';
 });
 
+// ========== TOUCH / MOBILE SUPPORT ==========
+const touch = {
+  longPressTimer: null,
+  longPressDelay: 400, // ms to trigger long press
+  startPos: null,
+  isDragging: false,
+  activeDevice: null,
+  moveThreshold: 10 // px movement to cancel long press
+};
+
+function isTouchDevice() {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function showMobileHint(text, duration = 2000) {
+  const hint = document.getElementById('mobileHint');
+  if (!hint) return;
+  hint.textContent = text;
+  hint.classList.add('show');
+  setTimeout(() => hint.classList.remove('show'), duration);
+}
+
+function showLongPressRing(x, y) {
+  const ring = document.getElementById('longPressRing');
+  if (!ring) return;
+  ring.style.left = (x - 25) + 'px';
+  ring.style.top = (y - 25) + 'px';
+  ring.style.width = '50px';
+  ring.style.height = '50px';
+  ring.classList.add('active');
+  setTimeout(() => ring.classList.remove('active'), 500);
+}
+
+function getTouchPos(e, rect) {
+  const t = e.touches[0] || e.changedTouches[0];
+  return {
+    x: t.clientX - rect.left,
+    y: t.clientY - rect.top,
+    clientX: t.clientX,
+    clientY: t.clientY
+  };
+}
+
+// Touch start - begin long press detection
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const pos = getTouchPos(e, rect);
+  
+  touch.startPos = pos;
+  touch.isDragging = false;
+  
+  const clickedDevice = findDeviceAt(pos.x, pos.y);
+  touch.activeDevice = clickedDevice;
+  
+  // Clear any existing timer
+  if (touch.longPressTimer) {
+    clearTimeout(touch.longPressTimer);
+    touch.longPressTimer = null;
+  }
+  
+  if (state.selectedTool === 'select' && clickedDevice) {
+    // Start long press timer for drag
+    touch.longPressTimer = setTimeout(() => {
+      // Long press triggered - enable drag mode
+      touch.isDragging = true;
+      showLongPressRing(pos.clientX, pos.clientY);
+      
+      // Select device if not already selected
+      if (!state.selectedDevices.includes(clickedDevice.id)) {
+        state.selectedDevices = [clickedDevice.id];
+      }
+      
+      // Store drag info
+      state.dragging = true;
+      state.dragOffset = { x: pos.x, y: pos.y };
+      state.dragStartPositions = {};
+      state.selectedDevices.forEach(id => {
+        const d = state.devices.find(dev => dev.id === id);
+        if (d) state.dragStartPositions[id] = { x: d.x, y: d.y };
+      });
+      
+      // Haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      
+      draw();
+    }, touch.longPressDelay);
+  } else if (state.selectedTool === 'cable' && clickedDevice) {
+    // Immediate action for cable tool
+    if (!state.cableStart) {
+      state.cableStart = clickedDevice.id;
+      showMobileHint(currentLang === 'ja' ? '接続先をタップ' : 'Tap destination');
+    } else if (state.cableStart !== clickedDevice.id) {
+      addLink(state.cableStart, clickedDevice.id);
+      state.cableStart = null;
+      updateUI();
+    }
+    draw();
+  } else if (state.selectedTool === 'delete' && clickedDevice) {
+    // Immediate delete on tap
+    if (clickedDevice.fixed) {
+      showHint(currentLang === 'ja' ? 'この機器は削除できません' : 'Cannot delete this device');
+    } else if (state.selectedDevices.includes(clickedDevice.id)) {
+      state.selectedDevices.forEach(id => {
+        const d = state.devices.find(dev => dev.id === id);
+        if (d && !d.fixed) deleteDevice(id);
+      });
+      state.selectedDevices = [];
+    } else {
+      deleteDevice(clickedDevice.id);
+    }
+    updateUI();
+    draw();
+  }
+}, { passive: false });
+
+// Touch move - drag device if long press was triggered
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const pos = getTouchPos(e, rect);
+  
+  // Check if moved too much before long press triggered
+  if (touch.startPos && !touch.isDragging) {
+    const dist = Math.sqrt(
+      Math.pow(pos.x - touch.startPos.x, 2) + 
+      Math.pow(pos.y - touch.startPos.y, 2)
+    );
+    if (dist > touch.moveThreshold && touch.longPressTimer) {
+      clearTimeout(touch.longPressTimer);
+      touch.longPressTimer = null;
+    }
+  }
+  
+  // Drag mode
+  if (touch.isDragging && state.dragging && state.selectedDevices.length > 0) {
+    const dx = pos.x - state.dragOffset.x;
+    const dy = pos.y - state.dragOffset.y;
+    state.selectedDevices.forEach(id => {
+      const device = state.devices.find(d => d.id === id);
+      const startPos = state.dragStartPositions[id];
+      if (device && startPos && !device.fixed) {
+        device.x = startPos.x + dx;
+        device.y = startPos.y + dy;
+      }
+    });
+    recalculateCableLengths();
+    draw();
+  }
+  
+  // Update mouse pos for cable drawing
+  state.mousePos = { x: pos.x, y: pos.y };
+  if (state.cableStart) {
+    draw();
+  }
+}, { passive: false });
+
+// Touch end - finish drag or handle tap
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  
+  // Clear long press timer
+  if (touch.longPressTimer) {
+    clearTimeout(touch.longPressTimer);
+    touch.longPressTimer = null;
+  }
+  
+  // Finish drag
+  if (touch.isDragging && state.dragging) {
+    recalculateCableLengths();
+    updateUI();
+    state.dragging = false;
+    state.dragStartPositions = null;
+  }
+  
+  // Handle tap (no drag occurred)
+  if (!touch.isDragging && state.selectedTool === 'select' && touch.activeDevice) {
+    // Single tap - select device
+    if (!state.selectedDevices.includes(touch.activeDevice.id)) {
+      state.selectedDevices = [touch.activeDevice.id];
+    }
+  }
+  
+  touch.isDragging = false;
+  touch.activeDevice = null;
+  touch.startPos = null;
+  draw();
+}, { passive: false });
+
+// Touch cancel
+canvas.addEventListener('touchcancel', () => {
+  if (touch.longPressTimer) {
+    clearTimeout(touch.longPressTimer);
+    touch.longPressTimer = null;
+  }
+  touch.isDragging = false;
+  touch.activeDevice = null;
+  touch.startPos = null;
+  state.dragging = false;
+});
+
+// Handle device button touch (long press to drag from toolbar)
+function setupMobileDeviceButtons() {
+  document.querySelectorAll('.device-btn').forEach(btn => {
+    let touchTimer = null;
+    let isDragging = false;
+    let ghostEl = null;
+    
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const deviceType = btn.dataset.device;
+      if (!deviceType) return;
+      
+      btn.classList.add('touch-active');
+      
+      touchTimer = setTimeout(() => {
+        // Long press - create draggable ghost
+        isDragging = true;
+        if (navigator.vibrate) navigator.vibrate(50);
+        
+        ghostEl = btn.cloneNode(true);
+        ghostEl.style.position = 'fixed';
+        ghostEl.style.opacity = '0.8';
+        ghostEl.style.pointerEvents = 'none';
+        ghostEl.style.zIndex = '1000';
+        ghostEl.style.transform = 'scale(1.1)';
+        document.body.appendChild(ghostEl);
+        
+        const t = e.touches[0];
+        ghostEl.style.left = (t.clientX - 30) + 'px';
+        ghostEl.style.top = (t.clientY - 30) + 'px';
+        
+        showMobileHint(currentLang === 'ja' ? 'ドロップして配置' : 'Drop to place');
+      }, touch.longPressDelay);
+    }, { passive: false });
+    
+    btn.addEventListener('touchmove', (e) => {
+      if (!isDragging || !ghostEl) return;
+      e.preventDefault();
+      
+      const t = e.touches[0];
+      ghostEl.style.left = (t.clientX - 30) + 'px';
+      ghostEl.style.top = (t.clientY - 30) + 'px';
+    }, { passive: false });
+    
+    btn.addEventListener('touchend', (e) => {
+      btn.classList.remove('touch-active');
+      
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      }
+      
+      if (isDragging && ghostEl) {
+        const t = e.changedTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        
+        // Check if dropped on canvas
+        if (t.clientX >= rect.left && t.clientX <= rect.right &&
+            t.clientY >= rect.top && t.clientY <= rect.bottom) {
+          const x = t.clientX - rect.left;
+          const y = t.clientY - rect.top;
+          addDevice(btn.dataset.device, x, y);
+          updateUI();
+          draw();
+        }
+        
+        ghostEl.remove();
+        ghostEl = null;
+      } else {
+        // Tap - show hint about long press
+        showMobileHint(currentLang === 'ja' ? '長押しでドラッグ' : 'Long press to drag');
+      }
+      
+      isDragging = false;
+    }, { passive: false });
+    
+    btn.addEventListener('touchcancel', () => {
+      btn.classList.remove('touch-active');
+      if (touchTimer) clearTimeout(touchTimer);
+      if (ghostEl) ghostEl.remove();
+      isDragging = false;
+    });
+  });
+}
+
+// Initialize mobile support
+if (isTouchDevice()) {
+  setupMobileDeviceButtons();
+  // Show initial hint
+  setTimeout(() => {
+    showMobileHint(currentLang === 'ja' ? '機器を長押しでドラッグ' : 'Long press to drag devices', 3000);
+  }, 1500);
+}
+
 function findDeviceAt(x, y) {
   for (let i = state.devices.length - 1; i >= 0; i--) {
     const d = state.devices[i];

@@ -413,6 +413,276 @@
       height: 12px;
       border-radius: 2px;
     }
+    
+    /* ========== MOBILE RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      header {
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      header h1 { font-size: 1.1em; }
+      .score-panel { gap: 12px; }
+      .score-item .label { font-size: 0.65em; }
+      .score-item .value { font-size: 1em; }
+      .main-container {
+        flex-direction: column;
+      }
+      .toolbar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 8px;
+        border-right: none;
+        border-bottom: 2px solid #0f3460;
+        justify-content: flex-start;
+        gap: 6px;
+        max-height: 140px;
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+      .toolbar-section {
+        display: none;
+      }
+      .device-btn {
+        padding: 6px;
+        min-width: 60px;
+        flex: 0 0 auto;
+      }
+      .device-btn .icon { width: 32px; height: 24px; margin-bottom: 2px; }
+      .device-btn .name { font-size: 0.65em; }
+      .device-btn .cost { font-size: 0.55em; }
+      .tool-btn {
+        padding: 6px;
+        min-width: 50px;
+        flex: 0 0 auto;
+      }
+      .tool-btn .icon { font-size: 1.2em; }
+      .tool-btn .name { font-size: 0.6em; }
+      .canvas-area {
+        flex: 1;
+        min-height: 300px;
+      }
+      .status-bar {
+        padding: 6px 10px;
+        font-size: 0.7em;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .status-bar .hint {
+        display: none;
+      }
+      .status-bar .connectivity {
+        flex: 1;
+      }
+      .check-btn {
+        padding: 6px 12px;
+        font-size: 0.85em;
+      }
+      .req-panel {
+        top: auto;
+        bottom: 50px;
+        right: 5px;
+        left: auto;
+        max-width: 160px;
+        font-size: 0.7em;
+        padding: 6px;
+        background: rgba(22, 33, 62, 0.85);
+      }
+      .stage-info {
+        padding: 6px 10px;
+        font-size: 0.85em;
+      }
+      .timer-display {
+        margin-left: 10px;
+        padding: 2px 8px;
+      }
+      .timer-value { font-size: 1em; min-width: 60px; }
+      .cable-select {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 4px;
+      }
+      .cable-option {
+        font-size: 0.65em;
+        padding: 3px 6px;
+      }
+      .modal-content {
+        padding: 20px;
+        max-width: 90%;
+        margin: 10px;
+      }
+      .modal h2 { font-size: 1.3em; margin-bottom: 15px; }
+      .modal .score-row { font-size: 0.9em; }
+      .share-buttons {
+        flex-direction: column;
+      }
+      .tutorial-box {
+        max-width: 280px;
+        padding: 15px;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+      }
+      .tutorial-highlight { display: none !important; }
+      .stage-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .stage-card { padding: 12px 8px; }
+      .stage-card .icon { font-size: 2em; }
+      .stage-card .name { font-size: 0.9em; }
+      .stage-card .desc { font-size: 0.7em; }
+    }
+    
+    @media (max-width: 480px) {
+      header {
+        justify-content: center;
+      }
+      header svg { width: 28px; height: 28px; }
+      header h1 { font-size: 0.95em; }
+      .score-panel { 
+        width: 100%; 
+        justify-content: space-around;
+        order: 2;
+      }
+      .lang-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+      .toolbar {
+        max-height: 100px;
+      }
+      .device-btn {
+        min-width: 50px;
+        padding: 4px;
+      }
+      .device-btn .name { display: none; }
+      .tool-btn {
+        min-width: 40px;
+        padding: 4px;
+      }
+      .tool-btn .name { display: none; }
+    }
+    
+    /* Landscape mode on mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+      header {
+        padding: 4px 10px;
+      }
+      header h1 { font-size: 1em; }
+      header svg { width: 24px; height: 24px; }
+      .score-item .label { font-size: 0.6em; }
+      .score-item .value { font-size: 0.9em; }
+      .main-container {
+        flex-direction: row;
+      }
+      .toolbar {
+        width: 80px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        max-height: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-right: 2px solid #0f3460;
+        border-bottom: none;
+        padding: 5px;
+        gap: 4px;
+      }
+      .toolbar-section { display: none; }
+      .device-btn {
+        min-width: auto;
+        padding: 4px;
+      }
+      .device-btn .icon { width: 28px; height: 20px; }
+      .device-btn .name { display: none; }
+      .device-btn .cost { font-size: 0.5em; }
+      .tool-btn {
+        padding: 4px;
+        min-width: auto;
+      }
+      .tool-btn .icon { font-size: 1em; }
+      .tool-btn .name { display: none; }
+      .cable-select {
+        flex-direction: column;
+        padding: 2px;
+      }
+      .cable-option {
+        font-size: 0.6em;
+        padding: 2px 4px;
+      }
+      .cable-option span:last-child { display: none; }
+      .stage-info {
+        padding: 4px 8px;
+        font-size: 0.75em;
+      }
+      .timer-display { padding: 2px 6px; margin-left: 5px; }
+      .timer-value { font-size: 0.9em; min-width: 50px; }
+      .req-panel {
+        bottom: 35px;
+        font-size: 0.65em;
+        padding: 4px;
+        max-width: 140px;
+      }
+      .status-bar {
+        padding: 4px 8px;
+        font-size: 0.65em;
+      }
+      .check-btn {
+        padding: 4px 10px;
+        font-size: 0.75em;
+      }
+    }
+    
+    /* Long-press indicator for mobile */
+    .long-press-ring {
+      position: absolute;
+      border: 3px solid #00d9ff;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0);
+      transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+      z-index: 100;
+    }
+    .long-press-ring.active {
+      opacity: 1;
+      transform: scale(1);
+      animation: longPressRing 0.5s ease-out forwards;
+    }
+    @keyframes longPressRing {
+      0% { transform: scale(0.5); opacity: 0.5; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+    
+    /* Touch-friendly device buttons */
+    .device-btn.touch-active {
+      background: #1a4a7a;
+      border-color: #00d9ff;
+      transform: scale(1.05);
+    }
+    
+    /* Mobile-specific tool tip */
+    .mobile-hint {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 217, 255, 0.9);
+      color: #000;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+      z-index: 150;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .mobile-hint.show {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -596,12 +866,18 @@
   </div>
   
   <div class="status-bar">
-    <span class="hint">💡 機器をドラッグ&ドロップで配置。範囲選択やShift+クリックで複数選択。</span>
+    <span class="hint" id="hintText">💡 機器をドラッグ&ドロップで配置。範囲選択やShift+クリックで複数選択。</span>
     <span class="connectivity" id="connectivityStatus">接続状態: 確認中...</span>
     <button class="check-btn" id="checkBtn">設計を評価</button>
   </div>
   
   <div class="tooltip" id="tooltip"></div>
+  
+  <!-- Long press indicator -->
+  <div class="long-press-ring" id="longPressRing"></div>
+  
+  <!-- Mobile hint -->
+  <div class="mobile-hint" id="mobileHint">長押しでドラッグ</div>
   
   <!-- Stage Select Modal -->
   <div class="modal show" id="stageSelectModal">
