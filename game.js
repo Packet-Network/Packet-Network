@@ -40,15 +40,25 @@ const i18n = {
     // Stages
     stage1Name: '🏠 マイホーム',
     stage1Desc: '自宅をインターネットに接続しよう',
-    stage2Name: '🏢 オフィス',
-    stage2Desc: '20人のオフィスネットワークを構築',
-    stage3Name: '🏭 データセンター',
-    stage3Desc: '高可用性のデータセンターを設計',
+    stage2Name: '📶 WiFiカフェ',
+    stage2Desc: '電子レンジの干渉を避けて全席カバー',
+    stage3Name: '🏢 オフィス',
+    stage3Desc: '10人のオフィスネットワークを構築',
+    stage4Name: '🏭 データセンター',
+    stage4Desc: '高可用性のデータセンターを設計',
+    // WiFi
+    wifiCoverage: 'WiFiカバー率',
+    wifiInterference: '干渉あり',
+    microwave: '電子レンジ',
+    wall: '壁',
+    wifiap: 'WiFi AP',
+    laptop: 'ノートPC',
     // Requirements
     reqInternet: 'インターネット接続',
     reqPCs: 'PC {n}台以上接続',
     reqSpeed: '全PCが{n}Mbps以上',
     reqRedundancy: '冗長パスあり',
+    reqWifiCoverage: 'WiFiカバー率{n}%以上',
     // Titles
     titleBeginner: '🌱 ネットワーク初心者',
     titleEngineer: '🔧 見習いエンジニア',
@@ -94,15 +104,25 @@ const i18n = {
     // Stages
     stage1Name: '🏠 My Home',
     stage1Desc: 'Connect your home to the internet',
-    stage2Name: '🏢 Office',
-    stage2Desc: 'Build a network for 20-person office',
-    stage3Name: '🏭 Data Center',
-    stage3Desc: 'Design a highly available data center',
+    stage2Name: '📶 WiFi Cafe',
+    stage2Desc: 'Avoid microwave interference, cover all seats',
+    stage3Name: '🏢 Office',
+    stage3Desc: 'Build a network for 10-person office',
+    stage4Name: '🏭 Data Center',
+    stage4Desc: 'Design a highly available data center',
+    // WiFi
+    wifiCoverage: 'WiFi Coverage',
+    wifiInterference: 'Interference',
+    microwave: 'Microwave',
+    wall: 'Wall',
+    wifiap: 'WiFi AP',
+    laptop: 'Laptop',
     // Requirements
     reqInternet: 'Internet connection',
     reqPCs: '{n}+ PCs connected',
     reqSpeed: 'All PCs at {n}Mbps+',
     reqRedundancy: 'Redundant paths',
+    reqWifiCoverage: 'WiFi coverage {n}%+',
     // Titles
     titleBeginner: '🌱 Network Beginner',
     titleEngineer: '🔧 Junior Engineer',
@@ -154,6 +174,27 @@ const stages = [
     id: 2,
     name: 'stage2Name',
     desc: 'stage2Desc',
+    icon: '📶',
+    gridSize: { w: 600, h: 400 },
+    isWireless: true,
+    requirements: [
+      { type: 'internet', desc: 'reqInternet' },
+      { type: 'minPCs', value: 4, desc: 'reqPCs' },
+      { type: 'wifiCoverage', value: 80, desc: 'reqWifiCoverage' },
+    ],
+    preplacedDevices: [
+      { type: 'internet', x: 80, y: 200, label: 'Internet', fixed: true },
+      { type: 'microwave', x: 450, y: 150, label: '電子レンジ', fixed: true },
+      { type: 'wall', x: 300, y: 100, label: '', fixed: true, width: 20, height: 200 },
+    ],
+    availableDevices: ['pc', 'laptop', 'router', 'wifiap'],
+    passingScore: 60,
+    budgetBonus: 300000
+  },
+  {
+    id: 3,
+    name: 'stage3Name',
+    desc: 'stage3Desc',
     icon: '🏢',
     gridSize: { w: 800, h: 500 },
     requirements: [
@@ -169,9 +210,9 @@ const stages = [
     budgetBonus: 1000000
   },
   {
-    id: 3,
-    name: 'stage3Name',
-    desc: 'stage3Desc',
+    id: 4,
+    name: 'stage4Name',
+    desc: 'stage4Desc',
     icon: '🏭',
     gridSize: { w: 1000, h: 600 },
     requirements: [
@@ -224,12 +265,16 @@ let currentCableType = 'cat6';
 // Device costs (realistic prices in JPY)
 const COSTS = {
   pc: 150000,         // 15万円 - 業務用PC
+  laptop: 120000,     // 12万円 - ノートPC
   server: 500000,     // 50万円 - サーバー
   switch8: 25000,     // 2.5万円 - L2スイッチ 8ポート
   switch24: 80000,    // 8万円 - L2スイッチ 24ポート
   switch48: 200000,   // 20万円 - L2スイッチ 48ポート
   router: 350000,     // 35万円 - 企業向けルーター
-  internet: 0         // ISPノード(固定)
+  wifiap: 15000,      // 1.5万円 - WiFiアクセスポイント
+  internet: 0,        // ISPノード(固定)
+  microwave: 0,       // 電子レンジ(障害物)
+  wall: 0             // 壁(障害物)
 };
 
 // Cable costs per meter
@@ -243,23 +288,40 @@ const CABLE_COSTS = {
 // Device colors
 const COLORS = {
   pc: '#4ecdc4',
+  laptop: '#06b6d4',
   server: '#a855f7',
   switch8: '#ffe66d',
   switch24: '#ffa94d',
   switch48: '#f97316',
   router: '#ff6b6b',
-  internet: '#22c55e'
+  wifiap: '#8b5cf6',
+  internet: '#22c55e',
+  microwave: '#ef4444',
+  wall: '#6b7280'
 };
 
 // Device port limits
 const PORT_LIMITS = {
   pc: 1,
+  laptop: 1,
   server: 2,
   switch8: 8,
   switch24: 24,
   switch48: 48,
   router: 4,
-  internet: 1
+  wifiap: 1,   // 1 wired port, unlimited wireless
+  internet: 1,
+  microwave: 0,
+  wall: 0
+};
+
+// WiFi settings
+const WIFI_SETTINGS = {
+  wifiap: {
+    range: 300,           // pixels (30m)
+    maxSpeed: 600,        // Mbps (WiFi 6)
+    channels: [1, 6, 11], // 2.4GHz channels
+  }
 };
 
 // Speed per device type (Mbps)
@@ -479,6 +541,110 @@ function drawDevice(device) {
       ctx.beginPath();
       ctx.moveTo(device.x - size/3 + 4, y);
       ctx.lineTo(device.x + size/3 - 4, y);
+      ctx.stroke();
+    }
+  } else if (device.type === 'laptop') {
+    // Laptop
+    ctx.beginPath();
+    ctx.roundRect(device.x - size/2, device.y - size/3, size, size*0.5, 3);
+    ctx.fill();
+    ctx.stroke();
+    // Screen
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(device.x - size/2 + 4, device.y - size/3 + 3, size - 8, size*0.3);
+    // Base
+    ctx.fillStyle = COLORS.laptop;
+    ctx.fillRect(device.x - size/2 - 2, device.y + size/6, size + 4, 6);
+  } else if (device.type === 'wifiap') {
+    // WiFi AP with range indicator
+    const range = WIFI_SETTINGS.wifiap.range;
+    
+    // Draw range circle (with interference check)
+    const interference = checkWifiInterference(device);
+    ctx.fillStyle = interference ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 92, 246, 0.15)';
+    ctx.strokeStyle = interference ? 'rgba(239, 68, 68, 0.3)' : 'rgba(139, 92, 246, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(device.x, device.y, range, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // AP body
+    ctx.fillStyle = COLORS.wifiap;
+    ctx.strokeStyle = isSelected ? '#00d9ff' : '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(device.x, device.y, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // WiFi icon
+    ctx.fillStyle = '#fff';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('📶', device.x, device.y + 5);
+    
+    // Interference warning
+    if (interference) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('⚠️', device.x + 20, device.y - 15);
+    }
+  } else if (device.type === 'microwave') {
+    // Microwave (interference source)
+    // Interference zone
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(device.x, device.y, 150, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Microwave body
+    ctx.fillStyle = COLORS.microwave;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(device.x - 25, device.y - 18, 50, 36, 4);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Door
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(device.x - 20, device.y - 13, 30, 26);
+    
+    // Interference waves
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(device.x, device.y, 30 + i * 15, -0.5, 0.5);
+      ctx.stroke();
+    }
+  } else if (device.type === 'wall') {
+    // Wall (signal blocker)
+    const w = device.width || 20;
+    const h = device.height || 100;
+    ctx.fillStyle = COLORS.wall;
+    ctx.strokeStyle = '#9ca3af';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.rect(device.x - w/2, device.y - h/2, w, h);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Brick pattern
+    ctx.strokeStyle = '#4b5563';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < h; i += 15) {
+      ctx.beginPath();
+      ctx.moveTo(device.x - w/2, device.y - h/2 + i);
+      ctx.lineTo(device.x + w/2, device.y - h/2 + i);
       ctx.stroke();
     }
   }
@@ -782,8 +948,17 @@ function getTypeName(type) {
 
 // Device/Link management
 function addDevice(type, x, y) {
-  const prefix = { pc: 'PC', switch8: 'SW', switch24: 'SW', router: 'RT' };
-  const countTypes = type.startsWith('switch') ? ['switch8', 'switch24'] : [type];
+  const prefix = { 
+    pc: 'PC', 
+    laptop: 'LP',
+    server: 'SV',
+    switch8: 'SW', 
+    switch24: 'SW', 
+    switch48: 'SW',
+    router: 'RT',
+    wifiap: 'AP'
+  };
+  const countTypes = type.startsWith('switch') ? ['switch8', 'switch24', 'switch48'] : [type];
   const count = state.devices.filter(d => countTypes.includes(d.type)).length + 1;
   
   state.devices.push({
@@ -791,7 +966,7 @@ function addDevice(type, x, y) {
     type,
     x,
     y,
-    label: `${prefix[type]}${count}`
+    label: prefix[type] ? `${prefix[type]}${count}` : type
   });
 }
 
@@ -1417,21 +1592,40 @@ function updateRequirements() {
 }
 
 function checkRequirement(req) {
-  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server');
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'server' || d.type === 'laptop');
   const internet = state.devices.find(d => d.type === 'internet');
   
   switch(req.type) {
     case 'internet':
       return internet && isConnectedToInternet();
     case 'minPCs':
-      return pcs.length >= req.value && pcs.every(pc => isDeviceConnected(pc.id));
+      return pcs.length >= req.value && pcs.every(pc => isDeviceConnectedOrWifi(pc.id));
     case 'minSpeed':
       return getMinSpeed() >= req.value;
     case 'redundancy':
       return hasRedundantPaths();
+    case 'wifiCoverage':
+      return calculateWifiCoverage() >= req.value;
     default:
       return false;
   }
+}
+
+function isDeviceConnectedOrWifi(deviceId) {
+  // Wired connection
+  if (isDeviceConnected(deviceId)) return true;
+  
+  // WiFi connection
+  const device = state.devices.find(d => d.id === deviceId);
+  if (!device) return false;
+  
+  const aps = state.devices.filter(d => d.type === 'wifiap');
+  for (const ap of aps) {
+    if (isInWifiRange(device, ap) && !checkWifiInterference(ap) && isDeviceConnected(ap.id)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isConnectedToInternet() {
@@ -1481,6 +1675,103 @@ function getMinSpeed() {
 function hasRedundantPaths() {
   // Check if there are multiple paths (more links than devices - 1)
   return state.links.length > state.devices.length - 1;
+}
+
+// ========== WIFI FUNCTIONS ==========
+function checkWifiInterference(apDevice) {
+  const microwaves = state.devices.filter(d => d.type === 'microwave');
+  for (const mw of microwaves) {
+    const dist = Math.sqrt(
+      Math.pow(apDevice.x - mw.x, 2) + 
+      Math.pow(apDevice.y - mw.y, 2)
+    );
+    if (dist < 150) { // Microwave interference range
+      return true;
+    }
+  }
+  return false;
+}
+
+function isInWifiRange(device, apDevice) {
+  const dist = Math.sqrt(
+    Math.pow(device.x - apDevice.x, 2) + 
+    Math.pow(device.y - apDevice.y, 2)
+  );
+  
+  // Check if wall blocks signal
+  if (isBlockedByWall(device, apDevice)) {
+    return false;
+  }
+  
+  return dist <= WIFI_SETTINGS.wifiap.range;
+}
+
+function isBlockedByWall(device1, device2) {
+  const walls = state.devices.filter(d => d.type === 'wall');
+  
+  for (const wall of walls) {
+    const w = wall.width || 20;
+    const h = wall.height || 100;
+    
+    // Simple line-rect intersection
+    if (lineIntersectsRect(
+      device1.x, device1.y,
+      device2.x, device2.y,
+      wall.x - w/2, wall.y - h/2, w, h
+    )) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function lineIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+  // Check if line from (x1,y1) to (x2,y2) intersects rectangle
+  const left = lineIntersectsLine(x1, y1, x2, y2, rx, ry, rx, ry + rh);
+  const right = lineIntersectsLine(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh);
+  const top = lineIntersectsLine(x1, y1, x2, y2, rx, ry, rx + rw, ry);
+  const bottom = lineIntersectsLine(x1, y1, x2, y2, rx, ry + rh, rx + rw, ry + rh);
+  return left || right || top || bottom;
+}
+
+function lineIntersectsLine(x1, y1, x2, y2, x3, y3, x4, y4) {
+  const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+  if (denom === 0) return false;
+  
+  const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+  const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+  
+  return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+}
+
+function calculateWifiCoverage() {
+  const stage = stages[state.currentStage];
+  if (!stage || !stage.isWireless) return 100;
+  
+  const wirelessDevices = state.devices.filter(d => 
+    d.type === 'laptop' || (d.type === 'pc' && !hasWiredConnection(d.id))
+  );
+  
+  if (wirelessDevices.length === 0) return 100;
+  
+  const aps = state.devices.filter(d => d.type === 'wifiap');
+  if (aps.length === 0) return 0;
+  
+  let coveredCount = 0;
+  for (const device of wirelessDevices) {
+    for (const ap of aps) {
+      if (isInWifiRange(device, ap) && !checkWifiInterference(ap)) {
+        coveredCount++;
+        break;
+      }
+    }
+  }
+  
+  return Math.round((coveredCount / wirelessDevices.length) * 100);
+}
+
+function hasWiredConnection(deviceId) {
+  return state.links.some(l => l.from === deviceId || l.to === deviceId);
 }
 
 function updateUIText() {

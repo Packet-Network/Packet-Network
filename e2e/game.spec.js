@@ -22,9 +22,9 @@ test.describe('Packet Network E2E Tests', () => {
       const modal = page.locator('#stageSelectModal');
       await expect(modal).toBeVisible();
       
-      // Check all 3 stages are present
+      // Check all 4 stages are present
       const stages = page.locator('.stage-card');
-      await expect(stages).toHaveCount(3);
+      await expect(stages).toHaveCount(4);
     });
 
     test('should start Stage 1 when clicked', async ({ page }) => {
@@ -94,9 +94,9 @@ test.describe('Packet Network E2E Tests', () => {
     });
 
     test('should delete non-fixed device', async ({ page }) => {
-      // Add a PC
+      // Add a PC at known position
       await page.evaluate(() => {
-        addDevice('pc', 400, 300);
+        addDevice('pc', 500, 300);
         updateUI();
         draw();
       });
@@ -104,10 +104,15 @@ test.describe('Packet Network E2E Tests', () => {
       // Select delete tool
       await page.locator('[data-tool="delete"]').click();
       
-      // Click on PC
+      // Get PC position and click on it
+      const pcPos = await page.evaluate(() => {
+        const pc = state.devices.find(d => d.type === 'pc');
+        return pc ? { x: pc.x, y: pc.y } : null;
+      });
+      
       const canvas = page.locator('#gameCanvas');
       const canvasBox = await canvas.boundingBox();
-      await page.mouse.click(canvasBox.x + 400, canvasBox.y + 300);
+      await page.mouse.click(canvasBox.x + pcPos.x, canvasBox.y + pcPos.y);
       
       // PC should be deleted
       const pcCount = await page.evaluate(() => {
@@ -186,10 +191,17 @@ test.describe('Packet Network E2E Tests', () => {
       // Select delete tool
       await page.locator('[data-tool="delete"]').click();
       
-      // Click on cable (midpoint between router and PC)
+      // Get midpoint of cable
+      const midpoint = await page.evaluate(() => {
+        const link = state.links[0];
+        const from = state.devices.find(d => d.id === link.from);
+        const to = state.devices.find(d => d.id === link.to);
+        return { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+      });
+      
       const canvas = page.locator('#gameCanvas');
       const canvasBox = await canvas.boundingBox();
-      await page.mouse.click(canvasBox.x + 425, canvasBox.y + 250);
+      await page.mouse.click(canvasBox.x + midpoint.x, canvasBox.y + midpoint.y);
       
       const linkCount = await page.evaluate(() => state.links.length);
       expect(linkCount).toBe(0);
