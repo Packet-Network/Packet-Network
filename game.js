@@ -29,7 +29,14 @@ const i18n = {
     nextStage: '次のステージ',
     stageClear: 'ステージクリア！',
     requirements: '要件',
-    cableWarning: '⚠️ ケーブルが150mを超えています！速度低下の原因になります',
+    cableWarning: '⚠️ ケーブルが規格上限を超えています！速度低下の原因になります',
+    time: 'タイム',
+    bestTime: 'ベスト',
+    newRecord: '🎉 新記録！',
+    cableType: 'ケーブル種別',
+    speedLabel: '速度',
+    maxLength: '最大長',
+    internetExit: '🌐 インターネット出口',
     // Stages
     stage1Name: '🏠 マイホーム',
     stage1Desc: '自宅をインターネットに接続しよう',
@@ -76,7 +83,14 @@ const i18n = {
     nextStage: 'Next Stage',
     stageClear: 'Stage Clear!',
     requirements: 'Requirements',
-    cableWarning: '⚠️ Cable exceeds 150m! This will cause speed degradation',
+    cableWarning: '⚠️ Cable exceeds max length! Speed will degrade',
+    time: 'Time',
+    bestTime: 'Best',
+    newRecord: '🎉 New Record!',
+    cableType: 'Cable Type',
+    speedLabel: 'Speed',
+    maxLength: 'Max Length',
+    internetExit: '🌐 Internet Exit',
     // Stages
     stage1Name: '🏠 My Home',
     stage1Desc: 'Connect your home to the internet',
@@ -189,8 +203,23 @@ const state = {
   nextId: 1,
   selectionBox: null,
   selectionStart: null,
-  clearedStages: JSON.parse(localStorage.getItem('pn_cleared') || '[]')
+  clearedStages: JSON.parse(localStorage.getItem('pn_cleared') || '[]'),
+  // Timer
+  startTime: null,
+  elapsedTime: 0,
+  timerInterval: null,
+  bestTimes: JSON.parse(localStorage.getItem('pn_best_times') || '{}')
 };
+
+// Ethernet Standards
+const ETHERNET_STANDARDS = {
+  cat5e: { name: 'Cat5e', maxLength: 100, speed: 1000, color: '#4ecdc4' },
+  cat6: { name: 'Cat6', maxLength: 100, speed: 1000, color: '#00d9ff' },
+  cat6a: { name: 'Cat6a', maxLength: 100, speed: 10000, color: '#ffa94d' },
+  fiber: { name: 'Fiber', maxLength: 2000, speed: 100000, color: '#a855f7' }
+};
+
+let currentCableType = 'cat6';
 
 // Device costs (realistic prices in JPY)
 const COSTS = {
@@ -200,8 +229,15 @@ const COSTS = {
   switch24: 80000,    // 8万円 - L2スイッチ 24ポート
   switch48: 200000,   // 20万円 - L2スイッチ 48ポート
   router: 350000,     // 35万円 - 企業向けルーター
-  internet: 0,        // ISPノード(固定)
-  cable: 800          // 800円 - Cat6 LANケーブル (per meter)
+  internet: 0         // ISPノード(固定)
+};
+
+// Cable costs per meter
+const CABLE_COSTS = {
+  cat5e: 50,    // ¥50/m
+  cat6: 80,     // ¥80/m  
+  cat6a: 150,   // ¥150/m
+  fiber: 500    // ¥500/m
 };
 
 // Device colors
@@ -274,28 +310,43 @@ function draw() {
     const from = state.devices.find(d => d.id === link.from);
     const to = state.devices.find(d => d.id === link.to);
     if (from && to) {
-      // Color based on cable length
-      ctx.strokeStyle = link.degraded ? '#ff6b6b' : '#00d9ff';
+      const standard = ETHERNET_STANDARDS[link.type] || ETHERNET_STANDARDS.cat6;
+      
+      // Color based on cable type and degradation
+      ctx.strokeStyle = link.degraded ? '#ff6b6b' : standard.color;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(to.x, to.y);
       ctx.stroke();
       
-      // Draw cable length label
+      // Draw cable info label
       const mx = (from.x + to.x) / 2;
       const my = (from.y + to.y) / 2;
       
-      ctx.fillStyle = link.degraded ? '#ff6b6b' : 'rgba(0,217,255,0.8)';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${link.length}m`, mx, my - 8);
+      // Background for label
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(mx - 35, my - 20, 70, 32);
       
-      // Warning icon for long cables
+      // Cable length and type
+      ctx.fillStyle = link.degraded ? '#ff6b6b' : '#fff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${link.length}m`, mx, my - 7);
+      
+      // Speed indicator
+      const speedText = link.actualSpeed >= 1000 
+        ? `${(link.actualSpeed/1000).toFixed(1)}Gbps` 
+        : `${link.actualSpeed}Mbps`;
+      ctx.fillStyle = link.degraded ? '#ff6b6b' : '#4ecdc4';
+      ctx.font = '9px monospace';
+      ctx.fillText(speedText, mx, my + 6);
+      
+      // Warning icon for degraded cables
       if (link.degraded) {
         ctx.fillStyle = '#ff6b6b';
-        ctx.font = '14px sans-serif';
-        ctx.fillText('⚠', mx, my + 8);
+        ctx.font = '12px sans-serif';
+        ctx.fillText('⚠️', mx + 30, my - 5);
       }
     }
   });
@@ -385,15 +436,35 @@ function drawDevice(device) {
     ctx.textAlign = 'center';
     ctx.fillText(`${usedPorts}/${PORT_LIMITS.router}`, device.x, device.y + 4);
   } else if (device.type === 'internet') {
-    // Internet/ISP - cloud shape
+    // Internet/ISP - prominent cloud with glow
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 20;
+    
+    // Outer ring
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(device.x, device.y, size/2 + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Main circle
     ctx.beginPath();
     ctx.arc(device.x, device.y, size/2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    
+    ctx.shadowBlur = 0;
+    
+    // Globe icon
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('☁', device.x, device.y + 6);
+    ctx.fillText('🌐', device.x, device.y + 7);
+    
+    // "EXIT" label
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('EXIT', device.x, device.y - size/2 - 8);
   } else if (device.type === 'server') {
     // Server - tall rectangle
     ctx.beginPath();
@@ -462,6 +533,15 @@ canvas.addEventListener('drop', (e) => {
     updateUI();
     draw();
   }
+});
+
+// Cable type selection
+document.querySelectorAll('.cable-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.cable-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    currentCableType = opt.dataset.cable;
+  });
 });
 
 // Canvas interactions
@@ -683,15 +763,29 @@ function addLink(fromId, toId) {
   );
   const cableLength = Math.round(distance * 0.5);
   
+  const standard = ETHERNET_STANDARDS[currentCableType];
+  const degraded = cableLength > standard.maxLength;
+  
+  // Calculate actual speed
+  let actualSpeed = standard.speed;
+  if (degraded) {
+    // Speed drops significantly over max length
+    const overLength = cableLength - standard.maxLength;
+    actualSpeed = Math.max(10, standard.speed * Math.pow(0.5, overLength / 50));
+  }
+  
   state.links.push({ 
     from: fromId, 
     to: toId, 
     length: cableLength,
-    degraded: cableLength > 150
+    type: currentCableType,
+    maxSpeed: standard.speed,
+    actualSpeed: Math.round(actualSpeed),
+    degraded
   });
   
   // Warn if cable too long
-  if (cableLength > 150) {
+  if (degraded) {
     showHint(t('cableWarning'));
   }
 }
@@ -749,8 +843,11 @@ function calculateCost() {
   state.devices.forEach(d => {
     cost += COSTS[d.type] || 0;
   });
-  // Cable cost per meter
-  cost += getTotalCableLength() * COSTS.cable;
+  // Cable cost per meter based on type
+  state.links.forEach(link => {
+    const cableCost = CABLE_COSTS[link.type] || CABLE_COSTS.cat6;
+    cost += link.length * cableCost;
+  });
   return cost;
 }
 
@@ -863,6 +960,13 @@ function evaluate() {
   // Title based on design style
   const title = getDesignTitle(connectivity, speed, comfort, redundancy, pcs.length, calculateCost());
   
+  // Stop timer and check for record
+  stopTimer();
+  let isNewRecord = false;
+  if (stage && total >= stage.passingScore) {
+    isNewRecord = saveBestTime(stage.id, state.elapsedTime);
+  }
+  
   // Store result for sharing
   lastEvalResult = {
     grade,
@@ -874,8 +978,11 @@ function evaluate() {
     deviceCount: state.devices.length,
     cost: calculateCost(),
     cableLength: getTotalCableLength(),
+    minSpeed: getMinSpeed(),
     title,
-    stageName: stages[state.currentStage] ? t(stages[state.currentStage].name) : 'Sandbox'
+    stageName: stage ? t(stage.name) : 'Sandbox',
+    time: state.elapsedTime,
+    isNewRecord
   };
   
   // Show result
@@ -888,6 +995,9 @@ function evaluate() {
   document.getElementById('resultGrade').textContent = connectivity === 100 ? `${grade}ランク (${total}点)` : '未完成';
   document.getElementById('resultTitleText').textContent = title.name;
   
+  const minSpd = getMinSpeed();
+  const spdText = minSpd >= 1000 ? `${(minSpd/1000).toFixed(1)}Gbps` : `${minSpd}Mbps`;
+  
   scoreDetail.innerHTML = `
     <div class="score-row"><span>🔗 ${t('connectivity')}</span><span>${connectivity}/100</span></div>
     <div class="score-row"><span>⚡ ${t('speed')}</span><span>${speed}/100</span></div>
@@ -898,7 +1008,10 @@ function evaluate() {
       <span><strong>${total}/100</strong></span>
     </div>
     <div style="margin-top:10px;font-size:0.85em;color:#888;">
-      💰 ${t('cost')}: ¥${calculateCost().toLocaleString()} | 📦 Cable: ${getTotalCableLength()}m
+      ⏱ ${formatTime(state.elapsedTime)} ${isNewRecord ? '<span style="color:#ffd700">' + t('newRecord') + '</span>' : ''}
+    </div>
+    <div style="margin-top:5px;font-size:0.85em;color:#888;">
+      💰 ¥${calculateCost().toLocaleString()} | 📦 ${getTotalCableLength()}m | ⚡ ${spdText}
     </div>
   `;
   
@@ -993,35 +1106,37 @@ let lastEvalResult = null;
 document.getElementById('tweetBtn').addEventListener('click', () => {
   if (!lastEvalResult) return;
   
-  const { grade, total, connectivity, speed, comfort, redundancy, deviceCount, cost, cableLength, title, stageName } = lastEvalResult;
+  const { grade, total, connectivity, speed, comfort, redundancy, cost, cableLength, minSpeed, title, stageName, time, isNewRecord } = lastEvalResult;
   
   const badges = { 'S': '👑', 'A': '🏆', 'B': '🥇', 'C': '🥈', 'D': '📝' };
   const stars = (score) => '★'.repeat(Math.ceil(score/20)) + '☆'.repeat(5-Math.ceil(score/20));
+  const spdText = minSpeed >= 1000 ? `${(minSpeed/1000).toFixed(1)}Gbps` : `${minSpeed}Mbps`;
+  const timeText = formatTime(time);
   
   const text = currentLang === 'ja' 
-    ? `${title.emoji} 私のネットワーク設計力は...
+    ? `${title.emoji} ${stageName}をクリア！
 
 「${title.name}」
 ${badges[grade]} ${grade}ランク（${total}点）
+⏱ ${timeText}${isNewRecord ? ' 🎉新記録!' : ''}
 
-🔗 接続: ${stars(connectivity)}
-⚡ 速度: ${stars(speed)}
-🏠 快適: ${stars(comfort)}
-🛡 冗長: ${stars(redundancy)}
+🔗 ${stars(connectivity)}
+⚡ ${stars(speed)} (${spdText})
+🏠 ${stars(comfort)}
+🛡 ${stars(redundancy)}
 
-🎮 ${stageName}
 #PacketNetwork`
-    : `${title.emoji} My network design skill is...
+    : `${title.emoji} Cleared ${stageName}!
 
 "${title.name}"
 ${badges[grade]} Rank ${grade} (${total}pts)
+⏱ ${timeText}${isNewRecord ? ' 🎉 New Record!' : ''}
 
-🔗 Connect: ${stars(connectivity)}
-⚡ Speed: ${stars(speed)}
-🏠 Comfort: ${stars(comfort)}
-🛡 Backup: ${stars(redundancy)}
+🔗 ${stars(connectivity)}
+⚡ ${stars(speed)} (${spdText})
+🏠 ${stars(comfort)}
+🛡 ${stars(redundancy)}
 
-🎮 ${stageName}
 #PacketNetwork`;
   
   const url = 'https://packetnetwork.exe.xyz:8000/';
@@ -1066,6 +1181,9 @@ function startStage(stageIndex) {
   state.nextId = 1;
   state.selectedDevices = [];
   
+  // Start timer
+  startTimer();
+  
   // Add preplaced devices
   stage.preplacedDevices.forEach(d => {
     state.devices.push({
@@ -1084,6 +1202,15 @@ function startStage(stageIndex) {
   document.getElementById('stageIcon').textContent = stage.icon;
   document.getElementById('stageName').textContent = t(stage.name);
   
+  // Show best time
+  const bestTimeEl = document.getElementById('bestTimeDisplay');
+  const bestTime = getBestTime(stage.id);
+  if (bestTime) {
+    bestTimeEl.textContent = `${t('bestTime')}: ${formatTime(bestTime)}`;
+  } else {
+    bestTimeEl.textContent = '';
+  }
+  
   updateRequirements();
   updateUI();
   draw();
@@ -1092,7 +1219,59 @@ function startStage(stageIndex) {
 function showStageSelect() {
   document.getElementById('stageSelectModal').classList.add('show');
   document.getElementById('stageInfo').style.display = 'none';
+  stopTimer();
   renderStageSelect();
+}
+
+// Timer functions
+function startTimer() {
+  state.startTime = Date.now();
+  state.elapsedTime = 0;
+  
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  
+  state.timerInterval = setInterval(() => {
+    state.elapsedTime = Date.now() - state.startTime;
+    updateTimerDisplay();
+  }, 100);
+  
+  updateTimerDisplay();
+}
+
+function stopTimer() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const timerEl = document.getElementById('timerDisplay');
+  if (timerEl) {
+    timerEl.textContent = formatTime(state.elapsedTime);
+  }
+}
+
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const tenth = Math.floor((ms % 1000) / 100);
+  return `${min}:${sec.toString().padStart(2, '0')}.${tenth}`;
+}
+
+function getBestTime(stageId) {
+  return state.bestTimes[stageId] || null;
+}
+
+function saveBestTime(stageId, time) {
+  const current = state.bestTimes[stageId];
+  if (!current || time < current) {
+    state.bestTimes[stageId] = time;
+    localStorage.setItem('pn_best_times', JSON.stringify(state.bestTimes));
+    return true; // New record
+  }
+  return false;
 }
 
 function updateRequirements() {
@@ -1166,9 +1345,11 @@ function canReach(fromId, toId) {
 }
 
 function getMinSpeed() {
-  // Simplified: check if any cable is degraded
-  const hasDegraded = state.links.some(l => l.degraded);
-  return hasDegraded ? 10 : 1000;
+  if (state.links.length === 0) return 0;
+  
+  // Find bottleneck - minimum speed across all links
+  const minLinkSpeed = Math.min(...state.links.map(l => l.actualSpeed || 1000));
+  return minLinkSpeed;
 }
 
 function hasRedundantPaths() {

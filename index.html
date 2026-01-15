@@ -354,6 +354,65 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    
+    /* Timer */
+    .timer-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 20px;
+      padding: 4px 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+    }
+    .timer-label { font-size: 1.2em; }
+    .timer-value {
+      font-family: 'Courier New', monospace;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #00d9ff;
+      min-width: 70px;
+    }
+    .best-time {
+      font-size: 0.8em;
+      color: #888;
+    }
+    .best-time.new-record {
+      color: #ffd700;
+      animation: pulse 0.5s ease-in-out infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
+    }
+    
+    /* Cable Select */
+    .cable-select {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 5px;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+    }
+    .cable-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75em;
+      transition: background 0.2s;
+    }
+    .cable-option:hover { background: rgba(255,255,255,0.1); }
+    .cable-option.selected { background: rgba(0,217,255,0.2); }
+    .cable-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -395,6 +454,11 @@
   <div class="stage-info" id="stageInfo" style="display:none;">
     <span class="icon" id="stageIcon">🏠</span>
     <span class="name" id="stageName">Stage 1</span>
+    <div class="timer-display">
+      <span class="timer-label">⏱</span>
+      <span class="timer-value" id="timerDisplay">0:00.0</span>
+      <span class="best-time" id="bestTimeDisplay"></span>
+    </div>
     <button class="back-btn" onclick="showStageSelect()">← Stages</button>
   </div>
   
@@ -478,6 +542,21 @@
           <circle cx="20" cy="12" r="3" fill="#00d9ff"/>
         </svg>
         <div class="name">ケーブル</div>
+      </div>
+      
+      <div class="cable-select" id="cableSelect">
+        <div class="cable-option selected" data-cable="cat6" title="Cat6 - 1Gbps, 100m">
+          <span class="cable-color" style="background:#00d9ff"></span>
+          <span>Cat6</span>
+        </div>
+        <div class="cable-option" data-cable="cat6a" title="Cat6a - 10Gbps, 100m">
+          <span class="cable-color" style="background:#ffa94d"></span>
+          <span>Cat6a</span>
+        </div>
+        <div class="cable-option" data-cable="fiber" title="Fiber - 100Gbps, 2000m">
+          <span class="cable-color" style="background:#a855f7"></span>
+          <span>Fiber</span>
+        </div>
       </div>
       
       <div class="tool-btn" data-tool="delete">
