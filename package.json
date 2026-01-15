@@ -1,0 +1,26 @@
+{
+  "name": "packet-network",
+  "version": "1.0.0",
+  "description": "ネットワーク設計を学べる教育ゲーム",
+  "main": "game.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Packet-Network/Packet-Network.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Packet-Network/Packet-Network/issues"
+  },
+  "homepage": "https://github.com/Packet-Network/Packet-Network#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright": "^1.57.0"
+  }
+}

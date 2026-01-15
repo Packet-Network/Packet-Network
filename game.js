@@ -691,6 +691,12 @@ canvas.addEventListener('mouseup', () => {
       .map(d => d.id);
   }
   
+  // Recalculate cable lengths after drag
+  if (state.dragging) {
+    recalculateCableLengths();
+    updateUI();
+  }
+  
   state.dragging = false;
   state.selectionStart = null;
   state.selectionBox = null;
@@ -877,10 +883,16 @@ function recalculateCableLengths() {
 }
 
 function deleteDevice(id) {
+  const device = state.devices.find(d => d.id === id);
+  // Don't delete fixed devices
+  if (device && device.fixed) {
+    return false;
+  }
   state.devices = state.devices.filter(d => d.id !== id);
   state.links = state.links.filter(l => l.from !== id && l.to !== id);
   const idx = state.selectedDevices.indexOf(id);
   if (idx >= 0) state.selectedDevices.splice(idx, 1);
+  return true;
 }
 
 // UI Updates
