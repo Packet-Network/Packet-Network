@@ -14,25 +14,28 @@ const state = {
   nextId: 1
 };
 
-// Device costs
+// Device costs (realistic prices in JPY)
 const COSTS = {
-  pc: 10000,
-  switch: 50000,
-  router: 100000,
-  cable: 1000
+  pc: 150000,        // 15万円 - 業務用PC
+  switch8: 25000,    // 2.5万円 - L2スイッチ 8ポート
+  switch24: 80000,   // 8万円 - L2スイッチ 24ポート  
+  router: 350000,    // 35万円 - 企業向けルーター
+  cable: 800         // 800円 - Cat6 LANケーブル
 };
 
 // Device colors
 const COLORS = {
   pc: '#4ecdc4',
-  switch: '#ffe66d',
+  switch8: '#ffe66d',
+  switch24: '#ffa94d',
   router: '#ff6b6b'
 };
 
 // Device port limits
 const PORT_LIMITS = {
   pc: 1,
-  switch: 8,
+  switch8: 8,
+  switch24: 24,
   router: 4
 };
 
@@ -132,10 +135,11 @@ function drawDevice(device) {
     ctx.roundRect(device.x - size/2, device.y - size/2, size, size, 5);
     ctx.fill();
     ctx.stroke();
-  } else if (device.type === 'switch') {
+  } else if (device.type === 'switch8' || device.type === 'switch24') {
     // Switch - rounded rectangle
+    const w = device.type === 'switch24' ? size * 1.3 : size;
     ctx.beginPath();
-    ctx.roundRect(device.x - size/2, device.y - size/4, size, size/2, 5);
+    ctx.roundRect(device.x - w/2, device.y - size/4, w, size/2, 5);
     ctx.fill();
     ctx.stroke();
     // Ports indicator
@@ -143,7 +147,7 @@ function drawDevice(device) {
     ctx.fillStyle = '#1a1a2e';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`${usedPorts}/${PORT_LIMITS.switch}`, device.x, device.y + 4);
+    ctx.fillText(`${usedPorts}/${PORT_LIMITS[device.type]}`, device.x, device.y + 4);
   } else if (device.type === 'router') {
     // Router - circle
     ctx.beginPath();
@@ -190,18 +194,24 @@ canvas.addEventListener('mousedown', (e) => {
   
   const clickedDevice = findDeviceAt(x, y);
   
+  // Always allow dragging existing devices
+  if (clickedDevice && state.selectedTool === 'select') {
+    state.selectedDevice = clickedDevice.id;
+    state.dragging = clickedDevice.id;
+    state.dragOffset = { x: x - clickedDevice.x, y: y - clickedDevice.y };
+    updateUI();
+    draw();
+    return;
+  }
+  
   switch (state.selectedTool) {
     case 'select':
-      if (clickedDevice) {
-        state.selectedDevice = clickedDevice.id;
-        state.dragging = clickedDevice.id;
-      } else {
-        state.selectedDevice = null;
-      }
+      state.selectedDevice = null;
       break;
       
     case 'pc':
-    case 'switch':
+    case 'switch8':
+    case 'switch24':
     case 'router':
       if (!clickedDevice) {
         addDevice(state.selectedTool, x, y);
@@ -242,8 +252,9 @@ canvas.addEventListener('mousemove', (e) => {
   if (state.dragging) {
     const device = state.devices.find(d => d.id === state.dragging);
     if (device) {
-      device.x = x;
-      device.y = y;
+      const offset = state.dragOffset || { x: 0, y: 0 };
+      device.x = x - offset.x;
+      device.y = y - offset.y;
     }
   }
   
@@ -290,7 +301,7 @@ function getTooltipContent(device) {
   content += `ポート: ${ports}/${maxPorts}<br>`;
   
   // Real terminology hint
-  if (device.type === 'switch') {
+  if (device.type === 'switch8' || device.type === 'switch24') {
     content += `<span style="color:#888;font-size:0.85em">💡 L2スイッチ (レイヤー2)</span>`;
   } else if (device.type === 'router') {
     content += `<span style="color:#888;font-size:0.85em">💡 L3ルーター (レイヤー3)</span>`;
@@ -300,14 +311,15 @@ function getTooltipContent(device) {
 }
 
 function getTypeName(type) {
-  const names = { pc: 'PC', switch: 'スイッチ', router: 'ルーター' };
+  const names = { pc: 'PC', switch8: 'L2スイッチ(8p)', switch24: 'L2スイッチ(24p)', router: 'ルーター' };
   return names[type];
 }
 
 // Device/Link management
 function addDevice(type, x, y) {
-  const count = state.devices.filter(d => d.type === type).length + 1;
-  const prefix = { pc: 'PC', switch: 'SW', router: 'RT' };
+  const prefix = { pc: 'PC', switch8: 'SW', switch24: 'SW', router: 'RT' };
+  const countTypes = type.startsWith('switch') ? ['switch8', 'switch24'] : [type];
+  const count = state.devices.filter(d => countTypes.includes(d.type)).length + 1;
   
   state.devices.push({
     id: state.nextId++,
@@ -374,7 +386,9 @@ function updateUI() {
 
 function calculateCost() {
   let cost = 0;
-  state.devices.forEach(d => cost += COSTS[d.type]);
+  state.devices.forEach(d => {
+    cost += COSTS[d.type] || 0;
+  });
   cost += state.links.length * COSTS.cable;
   return cost;
 }
@@ -420,7 +434,7 @@ document.getElementById('checkBtn').addEventListener('click', evaluate);
 
 function evaluate() {
   const pcs = state.devices.filter(d => d.type === 'pc');
-  const switches = state.devices.filter(d => d.type === 'switch');
+  const switches = state.devices.filter(d => d.type === 'switch8' || d.type === 'switch24');
   const routers = state.devices.filter(d => d.type === 'router');
   
   // Scores
@@ -453,7 +467,7 @@ function evaluate() {
   // 3. Scalability (20%) - based on switch usage
   if (switches.length > 0) {
     const avgPortUsage = switches.reduce((sum, sw) => sum + countPorts(sw.id), 0) / switches.length;
-    const avgCapacity = avgPortUsage / PORT_LIMITS.switch;
+    const avgCapacity = switches.reduce((sum, sw) => sum + countPorts(sw.id) / PORT_LIMITS[sw.type], 0) / switches.length;
     if (avgCapacity < 0.5) scalability = 100; // Room to grow
     else if (avgCapacity < 0.75) scalability = 70;
     else scalability = 40;
