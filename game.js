@@ -2245,7 +2245,10 @@ function showTutorialStep(stepIndex) {
   const box = document.getElementById('tutorialBox');
   const highlight = document.getElementById('tutorialHighlight');
   
-  if (step.target) {
+  // On mobile, always center the box
+  const isMobile = window.innerWidth <= 768;
+  
+  if (step.target && !isMobile) {
     const target = document.querySelector(step.target);
     if (target) {
       const rect = target.getBoundingClientRect();
@@ -2259,16 +2262,19 @@ function showTutorialStep(stepIndex) {
       if (step.position === 'right') {
         box.style.left = (rect.right + 20) + 'px';
         box.style.top = rect.top + 'px';
+        box.style.transform = 'none';
       } else if (step.position === 'top') {
         box.style.left = (rect.left - 100) + 'px';
         box.style.top = (rect.top - 180) + 'px';
+        box.style.transform = 'none';
       }
     }
   } else {
     highlight.style.display = 'none';
-    box.style.left = '50%';
-    box.style.top = '50%';
-    box.style.transform = 'translate(-50%, -50%)';
+    // Center in viewport - let CSS flexbox handle it
+    box.style.left = '';
+    box.style.top = '';
+    box.style.transform = '';
   }
   
   document.getElementById('tutorialNext').textContent = 
