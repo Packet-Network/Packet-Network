@@ -1436,17 +1436,23 @@ function updateUI() {
   updateRequirements();
   
   // Check connectivity
-  const pcs = state.devices.filter(d => d.type === 'pc');
-  if (pcs.length < 2) {
-    document.getElementById('connectivityStatus').textContent = '接続状態: PCを2台以上配置してください';
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'laptop' || d.type === 'server');
+  const internet = state.devices.find(d => d.type === 'internet');
+  
+  if (pcs.length === 0) {
+    document.getElementById('connectivityStatus').textContent = '接続状態: PCを配置してください';
+    document.getElementById('connectivityStatus').style.color = '#888';
+  } else if (!internet) {
+    document.getElementById('connectivityStatus').textContent = '接続状態: インターネットがありません';
     document.getElementById('connectivityStatus').style.color = '#888';
   } else {
-    const allConnected = checkAllPCsConnected();
-    if (allConnected) {
-      document.getElementById('connectivityStatus').textContent = '✓ 全PC接続済み';
+    // Count connected PCs (wired or WiFi)
+    const connectedPCs = pcs.filter(pc => canReach(internet.id, pc.id));
+    if (connectedPCs.length === pcs.length) {
+      document.getElementById('connectivityStatus').textContent = `✓ 全端末接続済み (${connectedPCs.length}台)`;
       document.getElementById('connectivityStatus').style.color = '#4ecdc4';
     } else {
-      document.getElementById('connectivityStatus').textContent = '✗ 未接続のPCがあります';
+      document.getElementById('connectivityStatus').textContent = `✗ 未接続: ${pcs.length - connectedPCs.length}台`;
       document.getElementById('connectivityStatus').style.color = '#ff6b6b';
     }
   }
@@ -1466,32 +1472,14 @@ function calculateCost() {
 }
 
 function checkAllPCsConnected() {
-  const pcs = state.devices.filter(d => d.type === 'pc');
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'laptop' || d.type === 'server');
   if (pcs.length < 2) return false;
   
-  // BFS from first PC
-  const visited = new Set();
-  const queue = [pcs[0].id];
-  visited.add(pcs[0].id);
+  const internet = state.devices.find(d => d.type === 'internet');
+  if (!internet) return false;
   
-  while (queue.length > 0) {
-    const current = queue.shift();
-    
-    // Find all connected devices
-    state.links.forEach(link => {
-      let neighbor = null;
-      if (link.from === current) neighbor = link.to;
-      if (link.to === current) neighbor = link.from;
-      
-      if (neighbor && !visited.has(neighbor)) {
-        visited.add(neighbor);
-        queue.push(neighbor);
-      }
-    });
-  }
-  
-  // Check if all PCs are visited
-  return pcs.every(pc => visited.has(pc.id));
+  // Check if all PCs can reach the internet (using canReach which supports WiFi)
+  return pcs.every(pc => canReach(internet.id, pc.id));
 }
 
 function showHint(message) {
@@ -1675,16 +1663,37 @@ function countConnectedPCs() {
 }
 
 function calculateRedundancy() {
-  // Check if there are multiple paths between any two PCs
-  const pcs = state.devices.filter(d => d.type === 'pc');
+  const pcs = state.devices.filter(d => d.type === 'pc' || d.type === 'laptop' || d.type === 'server');
   if (pcs.length < 2) return 0;
   
-  // Simple check: if total links > devices - 1, there might be redundancy
+  let score = 0;
+  
+  // Check for multiple WiFi APs (wireless redundancy)
+  const aps = state.devices.filter(d => d.type === 'wifiap');
+  const connectedAPs = aps.filter(ap => !checkWifiInterference(ap) && isDeviceConnected(ap.id));
+  if (connectedAPs.length >= 2) {
+    score += 40; // Multiple APs provide redundancy
+  }
+  
+  // Check for wired redundancy (more links than minimum spanning tree)
   const minLinks = state.devices.length - 1;
   if (state.links.length > minLinks) {
-    return Math.min(100, (state.links.length - minLinks) * 30 + 40);
+    score += Math.min(60, (state.links.length - minLinks) * 20);
   }
-  return 0;
+  
+  // Check for multiple internet connections
+  const internets = state.devices.filter(d => d.type === 'internet');
+  if (internets.length >= 2) {
+    // Check if both are connected to the network
+    const connectedInternets = internets.filter(inet => 
+      state.links.some(l => l.from === inet.id || l.to === inet.id)
+    );
+    if (connectedInternets.length >= 2) {
+      score += 30;
+    }
+  }
+  
+  return Math.min(100, score);
 }
 
 function getAdvice(conn, eff, scale, redun) {
