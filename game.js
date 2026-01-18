@@ -2307,3 +2307,174 @@ document.getElementById('tutorialNext').addEventListener('click', () => {
 if (!localStorage.getItem('packetnetwork_tutorial_done')) {
   setTimeout(showTutorial, 500);
 }
+
+// ========== NEW UI FEATURES ==========
+
+// Sidebar collapse toggle
+const toolbar = document.getElementById('toolbar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const collapseBtn = document.getElementById('collapseBtn');
+
+function toggleSidebar() {
+  toolbar.classList.toggle('collapsed');
+  const isCollapsed = toolbar.classList.contains('collapsed');
+  sidebarToggle.querySelector('.icon').textContent = isCollapsed ? '▶' : '◀';
+  if (collapseBtn) collapseBtn.textContent = isCollapsed ? '▶' : '◀';
+  // Save preference
+  localStorage.setItem('pn_sidebar_collapsed', isCollapsed);
+}
+
+if (sidebarToggle) {
+  sidebarToggle.addEventListener('click', toggleSidebar);
+}
+if (collapseBtn) {
+  collapseBtn.addEventListener('click', toggleSidebar);
+}
+
+// Restore sidebar state
+if (localStorage.getItem('pn_sidebar_collapsed') === 'true') {
+  toolbar.classList.add('collapsed');
+  sidebarToggle.querySelector('.icon').textContent = '▶';
+  if (collapseBtn) collapseBtn.textContent = '▶';
+}
+
+// ========== KEYBOARD SHORTCUTS ==========
+document.addEventListener('keydown', (e) => {
+  // Don't trigger shortcuts when typing in inputs
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  const key = e.key.toLowerCase();
+  
+  // Tool shortcuts
+  if (key === 'v') {
+    selectTool('select');
+  } else if (key === 'c') {
+    selectTool('cable');
+  } else if (key === 'x' || key === 'delete' || key === 'backspace') {
+    selectTool('delete');
+  }
+  
+  // Device shortcuts (number keys)
+  else if (key === '1') {
+    quickAddDevice('pc');
+  } else if (key === '2') {
+    quickAddDevice('switch8');
+  } else if (key === '3') {
+    quickAddDevice('router');
+  } else if (key === '4') {
+    quickAddDevice('wifiap');
+  } else if (key === '5') {
+    quickAddDevice('laptop');
+  } else if (key === '6') {
+    quickAddDevice('switch24');
+  }
+  
+  // Escape to cancel
+  else if (key === 'escape') {
+    state.cableStart = null;
+    state.selectedDevices = [];
+    hideContextMenu();
+    draw();
+  }
+});
+
+function selectTool(tool) {
+  state.selectedTool = tool;
+  state.cableStart = null;
+  
+  // Update toolbar UI
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.tool === tool);
+  });
+  
+  // Update quick bar UI
+  document.querySelectorAll('.quick-btn[data-tool]').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.tool === tool);
+  });
+  
+  canvas.style.cursor = tool === 'cable' ? 'crosshair' : 
+                         tool === 'delete' ? 'not-allowed' : 'default';
+  draw();
+}
+
+function quickAddDevice(type) {
+  // Add device at center of visible canvas
+  const rect = canvas.getBoundingClientRect();
+  const x = canvas.width / 2 + (Math.random() - 0.5) * 100;
+  const y = canvas.height / 2 + (Math.random() - 0.5) * 100;
+  addDevice(type, x, y);
+  updateUI();
+  draw();
+}
+
+// ========== QUICK ACCESS BAR ==========
+document.querySelectorAll('.quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tool) {
+      selectTool(btn.dataset.tool);
+    } else if (btn.dataset.device) {
+      quickAddDevice(btn.dataset.device);
+    }
+  });
+});
+
+// ========== CONTEXT MENU ==========
+const contextMenu = document.getElementById('contextMenu');
+let contextMenuPos = { x: 0, y: 0 };
+
+function showContextMenu(x, y, canvasX, canvasY) {
+  contextMenuPos = { x: canvasX, y: canvasY };
+  contextMenu.style.left = x + 'px';
+  contextMenu.style.top = y + 'px';
+  contextMenu.classList.add('show');
+}
+
+function hideContextMenu() {
+  contextMenu.classList.remove('show');
+}
+
+// Right-click on canvas
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const canvasX = e.clientX - rect.left;
+  const canvasY = e.clientY - rect.top;
+  showContextMenu(e.clientX, e.clientY, canvasX, canvasY);
+});
+
+// Click outside to close
+document.addEventListener('click', (e) => {
+  if (!contextMenu.contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+// Context menu actions
+document.querySelectorAll('.context-menu-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const action = item.dataset.action;
+    
+    if (action === 'add-pc') {
+      addDevice('pc', contextMenuPos.x, contextMenuPos.y);
+    } else if (action === 'add-switch') {
+      addDevice('switch8', contextMenuPos.x, contextMenuPos.y);
+    } else if (action === 'add-router') {
+      addDevice('router', contextMenuPos.x, contextMenuPos.y);
+    } else if (action === 'add-wifiap') {
+      addDevice('wifiap', contextMenuPos.x, contextMenuPos.y);
+    } else if (action === 'select-tool') {
+      selectTool('select');
+    } else if (action === 'cable-tool') {
+      selectTool('cable');
+    } else if (action === 'delete-tool') {
+      selectTool('delete');
+    }
+    
+    hideContextMenu();
+    updateUI();
+    draw();
+  });
+});
+
+// Initialize quick bar selection
+selectTool('select');

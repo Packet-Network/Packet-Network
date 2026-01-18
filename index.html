@@ -36,52 +36,142 @@
       display: flex;
       flex: 1;
     }
+    /* ========== NEW COMPACT SIDEBAR ========== */
     .toolbar {
-      width: 140px;
+      width: 90px;
       background: #16213e;
-      padding: 15px 10px;
+      padding: 8px 6px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
       border-right: 2px solid #0f3460;
       overflow-y: auto;
+      transition: width 0.3s, opacity 0.3s;
+    }
+    .toolbar.collapsed {
+      width: 40px;
+      padding: 8px 4px;
+    }
+    .toolbar.collapsed .device-btn .name,
+    .toolbar.collapsed .device-btn .cost,
+    .toolbar.collapsed .tool-btn .name,
+    .toolbar.collapsed .toolbar-section,
+    .toolbar.collapsed .cable-select {
+      display: none;
     }
     .toolbar-section {
-      font-size: 0.7em;
+      font-size: 0.6em;
       color: #666;
       text-transform: uppercase;
-      margin-top: 10px;
-      padding-bottom: 5px;
+      margin-top: 6px;
+      padding: 2px 0;
       border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toolbar-section .collapse-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 0 2px;
+    }
+    .toolbar-section .collapse-btn:hover { color: #00d9ff; }
+    
+    /* Device grid layout */
+    .device-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+    }
+    .toolbar.collapsed .device-grid {
+      grid-template-columns: 1fr;
     }
     .device-btn {
       background: #0f3460;
       border: 2px solid transparent;
-      border-radius: 8px;
-      padding: 8px;
+      border-radius: 6px;
+      padding: 4px 2px;
       cursor: grab;
       text-align: center;
       transition: all 0.2s;
       user-select: none;
+      position: relative;
     }
     .device-btn:hover { border-color: #00d9ff; background: #1a4a7a; }
     .device-btn:active { cursor: grabbing; }
-    .device-btn .icon { width: 48px; height: 36px; margin: 0 auto 5px; }
-    .device-btn .name { font-size: 0.75em; }
-    .device-btn .cost { font-size: 0.65em; color: #ffd700; }
+    .device-btn .icon { 
+      width: 28px; 
+      height: 22px; 
+      margin: 0 auto 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .device-btn .icon svg { width: 100%; height: 100%; }
+    .device-btn .name { font-size: 0.55em; line-height: 1.1; }
+    .device-btn .cost { font-size: 0.5em; color: #ffd700; }
+    
+    /* Tooltip on hover */
+    .device-btn[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #0f3460;
+      border: 1px solid #00d9ff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      white-space: nowrap;
+      z-index: 100;
+      margin-left: 5px;
+    }
+    
+    /* Tool buttons - horizontal row */
+    .tool-row {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
     .tool-btn {
       background: #0f3460;
       border: 2px solid transparent;
-      border-radius: 8px;
-      padding: 8px;
+      border-radius: 6px;
+      padding: 4px;
       cursor: pointer;
       text-align: center;
       transition: all 0.2s;
+      flex: 1;
+      min-width: 28px;
     }
     .tool-btn:hover { border-color: #00d9ff; }
     .tool-btn.selected { border-color: #00d9ff; background: #1a4a7a; }
-    .tool-btn .icon { font-size: 1.5em; }
-    .tool-btn .name { font-size: 0.7em; margin-top: 3px; }
+    .tool-btn .icon { font-size: 1em; }
+    .tool-btn .name { font-size: 0.5em; margin-top: 1px; }
+    
+    /* Collapse toggle button */
+    .sidebar-toggle {
+      position: absolute;
+      left: 90px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #0f3460;
+      border: 2px solid #00d9ff;
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      color: #00d9ff;
+      cursor: pointer;
+      padding: 8px 4px;
+      z-index: 50;
+      transition: left 0.3s;
+    }
+    .sidebar-toggle:hover { background: #1a4a7a; }
+    .toolbar.collapsed + .sidebar-toggle { left: 40px; }
+    .sidebar-toggle .icon { font-size: 0.8em; }
     .canvas-area {
       flex: 1;
       position: relative;
@@ -91,6 +181,99 @@
       width: 100%;
       height: 100%;
       display: block;
+    }
+    
+    /* ========== CONTEXT MENU ========== */
+    .context-menu {
+      position: fixed;
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 8px;
+      padding: 8px 0;
+      min-width: 150px;
+      z-index: 500;
+      display: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .context-menu.show { display: block; }
+    .context-menu-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .context-menu-item:hover { background: #1a4a7a; }
+    .context-menu-item .icon { font-size: 1em; }
+    .context-menu-item .label { font-size: 0.85em; }
+    .context-menu-item .shortcut { 
+      margin-left: auto; 
+      font-size: 0.7em; 
+      color: #666; 
+    }
+    .context-menu-divider {
+      height: 1px;
+      background: #0f3460;
+      margin: 4px 0;
+    }
+    .context-menu-submenu {
+      position: relative;
+    }
+    .context-menu-submenu > .submenu {
+      position: absolute;
+      left: 100%;
+      top: 0;
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 8px;
+      padding: 8px 0;
+      min-width: 120px;
+      display: none;
+    }
+    .context-menu-submenu:hover > .submenu { display: block; }
+    
+    /* ========== QUICK ACCESS BAR ========== */
+    .quick-bar {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 33, 62, 0.95);
+      border: 2px solid #0f3460;
+      border-radius: 12px;
+      padding: 6px 10px;
+      display: flex;
+      gap: 6px;
+      z-index: 40;
+    }
+    .quick-btn {
+      width: 40px;
+      height: 40px;
+      background: #0f3460;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .quick-btn:hover { border-color: #00d9ff; background: #1a4a7a; }
+    .quick-btn.selected { border-color: #00d9ff; background: #1a4a7a; }
+    .quick-btn .icon { font-size: 1.2em; }
+    .quick-btn .key {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #00d9ff;
+      color: #000;
+      font-size: 0.6em;
+      font-weight: bold;
+      padding: 1px 4px;
+      border-radius: 4px;
     }
     .status-bar {
       background: #16213e;
@@ -396,28 +579,29 @@
     /* Cable Select */
     .cable-select {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 5px;
-      padding: 8px;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-top: 4px;
+      padding: 4px;
       background: rgba(0,0,0,0.3);
-      border-radius: 6px;
+      border-radius: 4px;
     }
     .cable-option {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      border-radius: 4px;
+      gap: 3px;
+      padding: 2px 4px;
+      border-radius: 3px;
       cursor: pointer;
-      font-size: 0.75em;
+      font-size: 0.55em;
       transition: background 0.2s;
     }
     .cable-option:hover { background: rgba(255,255,255,0.1); }
     .cable-option.selected { background: rgba(0,217,255,0.2); }
     .cable-color {
-      width: 12px;
-      height: 12px;
+      width: 8px;
+      height: 8px;
       border-radius: 2px;
     }
     
@@ -439,61 +623,61 @@
         width: 100%;
         flex-direction: row;
         flex-wrap: nowrap;
-        padding: 8px;
+        padding: 6px;
         border-right: none;
         border-bottom: 2px solid #0f3460;
         justify-content: flex-start;
-        gap: 6px;
-        max-height: none;
+        gap: 4px;
         overflow-x: auto;
         overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
-        /* Scroll hint gradient */
-        background: linear-gradient(90deg, 
-          #16213e 0%, #16213e 85%, 
-          rgba(22, 33, 62, 0.5) 95%, 
-          rgba(22, 33, 62, 0) 100%
-        );
-        background-attachment: local, scroll;
       }
-      .toolbar::after {
-        content: '→';
-        position: sticky;
-        right: 0;
-        display: flex;
-        align-items: center;
-        padding: 0 8px;
-        color: #00d9ff;
-        font-size: 1.2em;
-        background: linear-gradient(90deg, transparent, #16213e 30%);
-        animation: scrollHint 1.5s ease-in-out infinite;
-      }
-      @keyframes scrollHint {
-        0%, 100% { opacity: 0.5; transform: translateX(0); }
-        50% { opacity: 1; transform: translateX(5px); }
-      }
-      .toolbar-section {
-        display: none;
+      .toolbar.collapsed { width: 100%; }
+      .toolbar::after { display: none; }
+      .sidebar-toggle { display: none; }
+      .toolbar-section { display: none; }
+      .device-grid {
+        display: contents;
       }
       .device-btn {
-        padding: 6px;
-        min-width: 60px;
+        padding: 4px 6px;
+        min-width: auto;
         flex: 0 0 auto;
       }
-      .device-btn .icon { width: 32px; height: 24px; margin-bottom: 2px; }
-      .device-btn .name { font-size: 0.65em; }
-      .device-btn .cost { font-size: 0.55em; }
+      .device-btn .icon { font-size: 1.1em; }
+      .device-btn .name { display: none; }
+      .device-btn[data-tooltip]:hover::after { display: none; }
+      .tool-row {
+        display: contents;
+      }
       .tool-btn {
-        padding: 6px;
-        min-width: 50px;
+        padding: 4px 6px;
+        min-width: auto;
         flex: 0 0 auto;
       }
-      .tool-btn .icon { font-size: 1.2em; }
-      .tool-btn .name { font-size: 0.6em; }
+      .tool-btn .icon { font-size: 1em; }
+      .cable-select {
+        display: flex;
+        flex-direction: row;
+        padding: 2px;
+        flex: 0 0 auto;
+      }
+      .cable-option span:last-child { display: none; }
       .canvas-area {
         flex: 1;
         min-height: 300px;
       }
+      .quick-bar {
+        bottom: 5px;
+        padding: 4px 6px;
+        gap: 4px;
+      }
+      .quick-btn {
+        width: 32px;
+        height: 32px;
+      }
+      .quick-btn .key { display: none; }
+      .context-menu { display: none !important; }
       .status-bar {
         padding: 6px 10px;
         font-size: 0.7em;
@@ -767,106 +951,58 @@
   </div>
   
   <div class="main-container">
-    <div class="toolbar">
-      <div class="toolbar-section" data-i18n="devices">機器</div>
-      
-      <div class="device-btn" draggable="true" data-device="pc">
-        <svg class="icon" viewBox="0 0 48 36">
-          <rect x="8" y="4" width="32" height="22" rx="2" fill="#4ecdc4" stroke="#fff" stroke-width="1.5"/>
-          <rect x="14" y="8" width="20" height="14" fill="#1a1a2e"/>
-          <rect x="12" y="28" width="24" height="3" rx="1" fill="#4ecdc4"/>
-          <rect x="20" y="31" width="8" height="2" fill="#4ecdc4"/>
-        </svg>
-        <div class="name">PC</div>
-        <div class="cost">¥150,000</div>
+    <div class="toolbar" id="toolbar">
+      <div class="toolbar-section">
+        <span data-i18n="devices">機器</span>
+        <button class="collapse-btn" id="collapseBtn" title="折りたたみ">◀</button>
       </div>
       
-      <div class="device-btn" draggable="true" data-device="switch8">
-        <svg class="icon" viewBox="0 0 48 36">
-          <rect x="4" y="12" width="40" height="14" rx="2" fill="#ffe66d" stroke="#fff" stroke-width="1.5"/>
-          <circle cx="10" cy="19" r="2" fill="#4ecdc4"/>
-          <circle cx="16" cy="19" r="2" fill="#4ecdc4"/>
-          <circle cx="22" cy="19" r="2" fill="#4ecdc4"/>
-          <circle cx="28" cy="19" r="2" fill="#4ecdc4"/>
-          <circle cx="34" cy="19" r="2" fill="#888"/>
-          <circle cx="40" cy="19" r="2" fill="#888"/>
-          <rect x="6" y="14" width="4" height="2" fill="#4ecdc4"/>
-          <rect x="6" y="22" width="4" height="2" fill="#ff6b6b"/>
-        </svg>
-        <div class="name">L2SW 8ポート</div>
-        <div class="cost">¥25,000</div>
+      <div class="device-grid">
+        <div class="device-btn" draggable="true" data-device="pc" data-tooltip="PC ¥150,000">
+          <div class="icon">💻</div>
+          <div class="name">PC</div>
+        </div>
+        
+        <div class="device-btn" draggable="true" data-device="laptop" data-tooltip="ノートPC ¥120,000">
+          <div class="icon">💻</div>
+          <div class="name">Laptop</div>
+        </div>
+        
+        <div class="device-btn" draggable="true" data-device="switch8" data-tooltip="L2SW 8ポート ¥25,000">
+          <div class="icon">🟨</div>
+          <div class="name">SW8</div>
+        </div>
+        
+        <div class="device-btn" draggable="true" data-device="switch24" data-tooltip="L2SW 24ポート ¥80,000">
+          <div class="icon">🟧</div>
+          <div class="name">SW24</div>
+        </div>
+        
+        <div class="device-btn" draggable="true" data-device="router" data-tooltip="ルーター ¥350,000">
+          <div class="icon">🔴</div>
+          <div class="name">Router</div>
+        </div>
+        
+        <div class="device-btn" draggable="true" data-device="wifiap" data-tooltip="WiFi AP ¥15,000">
+          <div class="icon">📶</div>
+          <div class="name">WiFi</div>
+        </div>
       </div>
       
-      <div class="device-btn" draggable="true" data-device="switch24">
-        <svg class="icon" viewBox="0 0 48 36">
-          <rect x="2" y="10" width="44" height="18" rx="2" fill="#ffa94d" stroke="#fff" stroke-width="1.5"/>
-          <g fill="#4ecdc4">
-            <circle cx="8" cy="16" r="1.5"/><circle cx="13" cy="16" r="1.5"/>
-            <circle cx="18" cy="16" r="1.5"/><circle cx="23" cy="16" r="1.5"/>
-            <circle cx="28" cy="16" r="1.5"/><circle cx="33" cy="16" r="1.5"/>
-            <circle cx="38" cy="16" r="1.5"/><circle cx="43" cy="16" r="1.5"/>
-            <circle cx="8" cy="22" r="1.5"/><circle cx="13" cy="22" r="1.5"/>
-            <circle cx="18" cy="22" r="1.5"/><circle cx="23" cy="22" r="1.5"/>
-          </g>
-          <g fill="#888">
-            <circle cx="28" cy="22" r="1.5"/><circle cx="33" cy="22" r="1.5"/>
-            <circle cx="38" cy="22" r="1.5"/><circle cx="43" cy="22" r="1.5"/>
-          </g>
-        </svg>
-        <div class="name">L2SW 24ポート</div>
-        <div class="cost">¥80,000</div>
+      <div class="toolbar-section">
+        <span data-i18n="tools">ツール</span>
       </div>
       
-      <div class="device-btn" draggable="true" data-device="laptop">
-        <svg class="icon" viewBox="0 0 48 36">
-          <rect x="8" y="6" width="32" height="18" rx="2" fill="#06b6d4" stroke="#fff" stroke-width="1.5"/>
-          <rect x="10" y="8" width="28" height="12" fill="#1a1a2e"/>
-          <rect x="4" y="24" width="40" height="5" rx="1" fill="#06b6d4"/>
-        </svg>
-        <div class="name">ノートPC</div>
-        <div class="cost">¥120,000</div>
-      </div>
-      
-      <div class="device-btn" draggable="true" data-device="router">
-        <svg class="icon" viewBox="0 0 48 36">
-          <rect x="6" y="8" width="36" height="20" rx="3" fill="#ff6b6b" stroke="#fff" stroke-width="1.5"/>
-          <circle cx="14" cy="18" r="3" fill="#1a1a2e"/>
-          <circle cx="24" cy="18" r="3" fill="#1a1a2e"/>
-          <circle cx="34" cy="18" r="3" fill="#1a1a2e"/>
-          <path d="M14 18 L24 18" stroke="#4ecdc4" stroke-width="1"/>
-          <path d="M24 18 L34 18" stroke="#4ecdc4" stroke-width="1"/>
-          <circle cx="40" cy="12" r="2" fill="#4ecdc4"/>
-          <circle cx="40" cy="24" r="2" fill="#ffe66d"/>
-        </svg>
-        <div class="name">ルーター</div>
-        <div class="cost">¥350,000</div>
-      </div>
-      
-      <div class="device-btn" draggable="true" data-device="wifiap">
-        <svg class="icon" viewBox="0 0 48 36">
-          <circle cx="24" cy="20" r="10" fill="#8b5cf6" stroke="#fff" stroke-width="1.5"/>
-          <path d="M16 14 Q24 6, 32 14" stroke="#fff" stroke-width="2" fill="none"/>
-          <path d="M12 10 Q24 -2, 36 10" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/>
-          <circle cx="24" cy="20" r="3" fill="#fff"/>
-        </svg>
-        <div class="name">WiFi AP</div>
-        <div class="cost">¥15,000</div>
-      </div>
-      
-      <div class="toolbar-section" data-i18n="tools">ツール</div>
-      
-      <div class="tool-btn selected" data-tool="select">
-        <div class="icon">⬜</div>
-        <div class="name">選択/移動</div>
-      </div>
-      
-      <div class="tool-btn" data-tool="cable">
-        <svg class="icon" style="width:24px;height:24px;" viewBox="0 0 24 24">
-          <path d="M4 12 Q12 4, 20 12" stroke="#00d9ff" stroke-width="2" fill="none"/>
-          <circle cx="4" cy="12" r="3" fill="#00d9ff"/>
-          <circle cx="20" cy="12" r="3" fill="#00d9ff"/>
-        </svg>
-        <div class="name">ケーブル</div>
+      <div class="tool-row">
+        <div class="tool-btn selected" data-tool="select" title="選択/移動 (V)">
+          <div class="icon">⬜</div>
+        </div>
+        <div class="tool-btn" data-tool="cable" title="ケーブル (C)">
+          <div class="icon">🔗</div>
+        </div>
+        <div class="tool-btn" data-tool="delete" title="削除 (X)">
+          <div class="icon">🗑️</div>
+        </div>
       </div>
       
       <div class="cable-select" id="cableSelect">
@@ -883,19 +1019,88 @@
           <span>Fiber</span>
         </div>
       </div>
-      
-      <div class="tool-btn" data-tool="delete">
-        <div class="icon">🗑️</div>
-        <div class="name">削除</div>
-      </div>
     </div>
+    
+    <button class="sidebar-toggle" id="sidebarToggle" title="サイドバーを折りたたみ">
+      <span class="icon">◀</span>
+    </button>
     
     <div class="canvas-area">
       <canvas id="gameCanvas"></canvas>
+      
+      <!-- Quick Access Bar -->
+      <div class="quick-bar" id="quickBar">
+        <button class="quick-btn" data-tool="select" title="選択 (V)">
+          <span class="icon">⬜</span>
+          <span class="key">V</span>
+        </button>
+        <button class="quick-btn" data-tool="cable" title="ケーブル (C)">
+          <span class="icon">🔗</span>
+          <span class="key">C</span>
+        </button>
+        <button class="quick-btn" data-tool="delete" title="削除 (X)">
+          <span class="icon">🗑️</span>
+          <span class="key">X</span>
+        </button>
+        <div style="width:1px;background:#0f3460;margin:0 4px;"></div>
+        <button class="quick-btn" data-device="pc" title="PC (1)">
+          <span class="icon">💻</span>
+          <span class="key">1</span>
+        </button>
+        <button class="quick-btn" data-device="switch8" title="スイッチ (2)">
+          <span class="icon">🟨</span>
+          <span class="key">2</span>
+        </button>
+        <button class="quick-btn" data-device="router" title="ルーター (3)">
+          <span class="icon">🔴</span>
+          <span class="key">3</span>
+        </button>
+      </div>
+      
       <div class="req-panel" id="reqPanel">
         <h4 data-i18n="requirements">📝 Requirements</h4>
         <div id="reqList"></div>
       </div>
+    </div>
+  </div>
+  
+  <!-- Context Menu -->
+  <div class="context-menu" id="contextMenu">
+    <div class="context-menu-item" data-action="add-pc">
+      <span class="icon">💻</span>
+      <span class="label">PCを追加</span>
+      <span class="shortcut">1</span>
+    </div>
+    <div class="context-menu-item" data-action="add-switch">
+      <span class="icon">🟨</span>
+      <span class="label">スイッチを追加</span>
+      <span class="shortcut">2</span>
+    </div>
+    <div class="context-menu-item" data-action="add-router">
+      <span class="icon">🔴</span>
+      <span class="label">ルーターを追加</span>
+      <span class="shortcut">3</span>
+    </div>
+    <div class="context-menu-item" data-action="add-wifiap">
+      <span class="icon">📶</span>
+      <span class="label">WiFi APを追加</span>
+      <span class="shortcut">4</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" data-action="select-tool">
+      <span class="icon">⬜</span>
+      <span class="label">選択ツール</span>
+      <span class="shortcut">V</span>
+    </div>
+    <div class="context-menu-item" data-action="cable-tool">
+      <span class="icon">🔗</span>
+      <span class="label">ケーブルツール</span>
+      <span class="shortcut">C</span>
+    </div>
+    <div class="context-menu-item" data-action="delete-tool">
+      <span class="icon">🗑️</span>
+      <span class="label">削除ツール</span>
+      <span class="shortcut">X</span>
     </div>
   </div>
   
@@ -954,6 +1159,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=20260116"></script>
+  <script src="game.js?v=20260116b"></script>
 </body>
 </html>
